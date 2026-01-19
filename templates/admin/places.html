@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Places{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="mb-1">Places</h1>
+      <div class="text-muted">Create and manage your travel stops and vlog links.</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-primary" href="{{ url_for('admin.admin_place_new') }}">
+        <i class="fa-solid fa-plus me-1"></i>New place
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_posts') }}">
+        <i class="fa-solid fa-newspaper me-1"></i>Posts
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_messages') }}">
+        <i class="fa-solid fa-inbox me-1"></i>Messages
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_categories') }}">
+        <i class="fa-solid fa-tags me-1"></i>Categories
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_settings') }}">
+        <i class="fa-solid fa-gear me-1"></i>Site settings
+      </a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_access_control') }}">
+        <i class="fa-solid fa-user-shield me-1"></i>Access control
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      {% if places %}
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in places %}
+                <tr>
+                  <td class="fw-semibold">{{ p['name'] }}</td>
+                  <td>
+                    {% if p['category_name'] %}
+                      <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis">{{ p['category_name'] }}</span>
+                    {% else %}
+                      <span class="text-muted">Uncategorized</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-muted">
+                    {% if p['city'] %}{{ p['city'] }}{% endif %}{% if p['city'] and p['state'] %}, {% endif %}{% if p['state'] %}{{ p['state'] }}{% endif %}
+                  </td>
+                  <td class="text-end">
+                    <div class="d-inline-flex gap-2">
+                      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.admin_place_edit', place_id=p['id']) }}">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </a>
+                      <form method="post" action="{{ url_for('admin.admin_place_delete', place_id=p['id']) }}" class="mb-0" onsubmit="return confirm('Delete this place?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="mb-3">No places yet.</p>
+        <a class="btn btn-primary" href="{{ url_for('admin.admin_place_new') }}">
+          <i class="fa-solid fa-plus me-1"></i>Create the first place
+        </a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

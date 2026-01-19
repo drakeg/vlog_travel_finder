@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+  <div class="row g-4">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h1 class="h3 mb-2">Welcome</h1>
+          <div class="text-muted">Travel inspiration, place guides, and behind-the-scenes from our trips.</div>
+
+          {% if featured_youtube_url %}
+            <hr />
+            <div class="ratio ratio-16x9">
+              <iframe
+                src="{{ featured_youtube_url }}"
+                title="Featured video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Latest posts</h2>
+
+          {% if posts %}
+            <div class="list-group list-group-flush">
+              {% for p in posts %}
+                <a class="list-group-item list-group-item-action" href="{{ url_for('public.blog_post', slug=p.slug) }}">
+                  <div class="fw-semibold">{{ p.title }}</div>
+                  <div class="text-muted small">Read more</div>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted">No posts yet.</div>
+          {% endif %}
+
+          <hr />
+          <div class="d-grid gap-2">
+            <a class="btn btn-outline-primary" href="{{ url_for('public.places') }}">
+              <i class="fa-solid fa-map-location-dot me-1"></i>Browse places
+            </a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('public.blog_index') }}">
+              <i class="fa-solid fa-newspaper me-1"></i>View blog
+            </a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('public.contact') }}">
+              <i class="fa-solid fa-envelope me-1"></i>Contact us
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

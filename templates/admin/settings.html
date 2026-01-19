@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Site Settings{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <h1 class="mb-0">Site settings</h1>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places') }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to places
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <h2 class="h5 mb-1">Public site</h2>
+          <div class="text-muted small">Optional settings used on the public pages.</div>
+        </div>
+
+        <div class="col-12">
+          <label for="featured_youtube_url" class="form-label">Featured YouTube URL</label>
+          <input
+            class="form-control"
+            id="featured_youtube_url"
+            name="featured_youtube_url"
+            type="url"
+            value="{{ featured_youtube_url or '' }}"
+            placeholder="https://www.youtube.com/watch?v=... or https://www.youtube.com/embed/..."
+          />
+          <div class="text-muted small mt-1">Tip: an embed URL works best.</div>
+        </div>
+
+        <div class="col-12">
+          <hr class="my-2" />
+          <h2 class="h5 mb-1">Contact info</h2>
+          <div class="text-muted small">Displayed in the footer and on the contact page.</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="contact_email" class="form-label">Contact email</label>
+          <input
+            class="form-control"
+            id="contact_email"
+            name="contact_email"
+            type="email"
+            value="{{ contact_email or '' }}"
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="contact_phone" class="form-label">Contact phone</label>
+          <input
+            class="form-control"
+            id="contact_phone"
+            name="contact_phone"
+            type="tel"
+            value="{{ contact_phone or '' }}"
+            placeholder="555-555-5555"
+            autocomplete="tel"
+          />
+        </div>
+
+        <div class="col-12">
+          <hr class="my-2" />
+          <h2 class="h5 mb-1">Contact form email (SMTP)</h2>
+          <div class="text-muted small">If configured, contact form submissions will be emailed and also stored in the database.</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_host" class="form-label">SMTP host</label>
+          <input class="form-control" id="smtp_host" name="smtp_host" value="{{ smtp_host or '' }}" placeholder="smtp.gmail.com" />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_port" class="form-label">SMTP port</label>
+          <input class="form-control" id="smtp_port" name="smtp_port" value="{{ smtp_port or '' }}" placeholder="587" inputmode="numeric" />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_username" class="form-label">SMTP username</label>
+          <input class="form-control" id="smtp_username" name="smtp_username" type="text" value="{{ smtp_username or '' }}" autocomplete="off" />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_password" class="form-label">SMTP password</label>
+          <input class="form-control" id="smtp_password" name="smtp_password" type="password" value="{{ smtp_password or '' }}" autocomplete="off" />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_from" class="form-label">From address</label>
+          <input class="form-control" id="smtp_from" name="smtp_from" value="{{ smtp_from or '' }}" placeholder="you@example.com" />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="smtp_to" class="form-label">To address</label>
+          <input class="form-control" id="smtp_to" name="smtp_to" value="{{ smtp_to or '' }}" placeholder="inbox@example.com" />
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+/* Bootstrap-friendly minimal overrides */
+
+body {
+  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 65%);
+}
+
+.navbar-brand {
+  letter-spacing: 0.2px;
+}
+
+/* Keep long notes readable */
+.pre {
+  white-space: pre-wrap;
+}

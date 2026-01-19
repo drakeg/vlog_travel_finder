@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Categories{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="mb-1">Categories</h1>
+      <div class="text-muted">Use categories to group your places.</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places') }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to places
+    </a>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <form method="post" class="row g-2 align-items-end">
+        <div class="col-12 col-md-8">
+          <label for="name" class="form-label">New category</label>
+          <input class="form-control" id="name" name="name" placeholder="Restaurants" />
+        </div>
+        <div class="col-12 col-md-4 d-grid">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Add
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      {% if categories %}
+        <div class="list-group">
+          {% for c in categories %}
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <div class="fw-semibold">{{ c.name }}</div>
+              <form method="post" action="{{ url_for('admin.admin_category_delete', category_id=c.id) }}" class="mb-0" onsubmit="return confirm('Delete this category?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted">No categories yet.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

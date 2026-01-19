@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Contact{% endblock %}
+
+{% block content %}
+  <div class="row g-4">
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h1 class="h4 mb-2">Contact</h1>
+          <div class="text-muted">Send us a message and we'll get back to you.</div>
+
+          <hr />
+
+          <form method="post" class="row g-3">
+            <div class="col-12" style="display:none;">
+              <label for="website" class="form-label">Website</label>
+              <input class="form-control" id="website" name="website" type="text" value="" autocomplete="off" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="name" class="form-label">Name</label>
+              <input class="form-control" id="name" name="name" type="text" required />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="email" class="form-label">Email</label>
+              <input class="form-control" id="email" name="email" type="email" required autocomplete="email" />
+            </div>
+
+            <div class="col-12">
+              <label for="subject" class="form-label">Subject</label>
+              <input class="form-control" id="subject" name="subject" type="text" required />
+            </div>
+
+            <div class="col-12">
+              <label for="message" class="form-label">Message</label>
+              <textarea class="form-control" id="message" name="message" rows="6" required></textarea>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-paper-plane me-1"></i>Send
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Other ways to reach us</h2>
+
+          {% if contact_email %}
+            <div class="mb-2">
+              <i class="fa-solid fa-envelope me-2"></i>
+              <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+            </div>
+          {% endif %}
+
+          {% if contact_phone %}
+            <div class="mb-2">
+              <i class="fa-solid fa-phone me-2"></i>
+              <a href="tel:{{ contact_phone }}">{{ contact_phone }}</a>
+            </div>
+          {% endif %}
+
+          {% if not contact_email and not contact_phone %}
+            <div class="text-muted">No contact info configured yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

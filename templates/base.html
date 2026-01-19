@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Vlog Travel Finder{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <header class="border-bottom bg-body">
+      <nav class="navbar navbar-expand-lg">
+        <div class="container">
+          <a class="navbar-brand fw-bold" href="{{ url_for('public.home') }}">
+            <i class="fa-solid fa-map-location-dot me-2"></i>Vlog Travel Finder
+          </a>
+
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarMain"
+            aria-controls="navbarMain"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('public.home') }}">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('public.places') }}">Places</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('public.blog_index') }}">Blog</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('public.about') }}">About</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('public.contact') }}">Contact</a>
+              </li>
+              {% if is_admin %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ url_for('admin.admin_places') }}">Admin</a>
+                </li>
+              {% endif %}
+            </ul>
+
+            <div class="d-flex gap-2 align-items-center">
+              {% if is_authenticated %}
+                <form method="post" action="{{ url_for('auth.logout') }}" class="mb-0">
+                  <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
+                  </button>
+                </form>
+              {% else %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.login') }}">
+                  <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+                </a>
+                <a class="btn btn-outline-primary btn-sm" href="{{ url_for('auth.register') }}">
+                  <i class="fa-solid fa-user-plus me-1"></i>Register
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container py-4">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for category, message in messages %}
+              <div class="alert {% if category == 'error' %}alert-danger{% else %}alert-secondary{% endif %} mb-2" role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-top py-4 mt-5 bg-body">
+      <div class="container text-muted">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+          <small>Built with Flask</small>
+          {% if contact_email or contact_phone %}
+            <small>
+              {% if contact_email %}
+                <a class="text-muted text-decoration-none" href="mailto:{{ contact_email }}">
+                  <i class="fa-solid fa-envelope me-1"></i>{{ contact_email }}
+                </a>
+              {% endif %}
+              {% if contact_email and contact_phone %}
+                <span class="mx-2">|</span>
+              {% endif %}
+              {% if contact_phone %}
+                <a class="text-muted text-decoration-none" href="tel:{{ contact_phone }}">
+                  <i class="fa-solid fa-phone me-1"></i>{{ contact_phone }}
+                </a>
+              {% endif %}
+            </small>
+          {% endif %}
+        </div>
+      </div>
+    </footer>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>

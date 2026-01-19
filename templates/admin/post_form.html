@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - {% if post %}Edit{% else %}New{% endif %} Post{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <h1 class="mb-0">{% if post %}Edit{% else %}New{% endif %} post</h1>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_posts') }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to posts
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label for="title" class="form-label">Title</label>
+          <input class="form-control" id="title" name="title" type="text" value="{{ post.title if post else '' }}" required />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="slug" class="form-label">Slug</label>
+          <input class="form-control" id="slug" name="slug" type="text" value="{{ post.slug if post else '' }}" placeholder="my-trip-to-asheville" />
+          <div class="text-muted small mt-1">Used in the URL.</div>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label for="status" class="form-label">Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="draft" {% if post and post.status == 'draft' %}selected{% endif %}>Draft</option>
+            <option value="published" {% if post and post.status == 'published' %}selected{% endif %}>Published</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label for="publish_at" class="form-label">Publish at</label>
+          <input class="form-control" id="publish_at" name="publish_at" type="datetime-local" value="{{ (post.publish_at[:16]|replace(' ', 'T')) if post and post.publish_at else '' }}" />
+          <div class="text-muted small mt-1">Leave blank to publish immediately (when status is published).</div>
+        </div>
+
+        <div class="col-12">
+          <label for="content_md" class="form-label">Content (Markdown)</label>
+          <textarea class="form-control" id="content_md" name="content_md" rows="16">{{ post.content_md if post else '' }}</textarea>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save
+          </button>
+          {% if post %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('public.blog_post', slug=post.slug) }}" target="_blank" rel="noreferrer">
+              <i class="fa-solid fa-up-right-from-square me-1"></i>View
+            </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

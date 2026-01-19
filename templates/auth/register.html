@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-7 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h1 class="h4 mb-3">Register</h1>
+
+          <form method="post" class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="email">Email</label>
+              <input class="form-control" id="email" name="email" type="email" autocomplete="email" required />
+            </div>
+
+            <div class="col-12">
+              <label for="password" class="form-label">Password</label>
+              <input class="form-control" id="password" name="password" type="password" autocomplete="new-password" required />
+            </div>
+
+            <div class="col-12">
+              <label for="confirm" class="form-label">Confirm password</label>
+              <input class="form-control" id="confirm" name="confirm" type="password" autocomplete="new-password" required />
+            </div>
+
+            <div class="col-12 d-grid">
+              <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-user-plus me-1"></i>Create account
+              </button>
+            </div>
+          </form>
+
+          <hr />
+          <div class="text-muted small">
+            Already have an account?
+            <a href="{{ url_for('auth.login', next=request.args.get('next')) }}">Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

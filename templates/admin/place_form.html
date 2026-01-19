@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{% if place %}Edit{% else %}New{% endif %} Place - Admin{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <h1 class="mb-0">{% if place %}Edit{% else %}New{% endif %} place</h1>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places') }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to places
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label for="name" class="form-label">Name</label>
+          <input class="form-control" id="name" name="name" value="{{ place.name if place else '' }}" required />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="category_id" class="form-label">Category</label>
+          <select class="form-select" id="category_id" name="category_id">
+            <option value="">Uncategorized</option>
+            {% for c in categories %}
+              <option value="{{ c.id }}" {% if place and place.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <hr class="my-2" />
+          <h2 class="h5 mb-1">Venue / site social links</h2>
+          <div class="text-muted small">Links that belong to the place itself (their website + socials).</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="venue_website_url" class="form-label">Venue website</label>
+          <input class="form-control" id="venue_website_url" name="venue_website_url" value="{{ place.venue_website_url if place else '' }}" placeholder="https://..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="venue_youtube_url" class="form-label">Venue YouTube</label>
+          <input class="form-control" id="venue_youtube_url" name="venue_youtube_url" value="{{ place.venue_youtube_url if place else '' }}" placeholder="https://youtube.com/..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="venue_tiktok_url" class="form-label">Venue TikTok</label>
+          <input class="form-control" id="venue_tiktok_url" name="venue_tiktok_url" value="{{ place.venue_tiktok_url if place else '' }}" placeholder="https://tiktok.com/..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="venue_instagram_url" class="form-label">Venue Instagram</label>
+          <input class="form-control" id="venue_instagram_url" name="venue_instagram_url" value="{{ place.venue_instagram_url if place else '' }}" placeholder="https://instagram.com/..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="venue_facebook_url" class="form-label">Venue Facebook</label>
+          <input class="form-control" id="venue_facebook_url" name="venue_facebook_url" value="{{ place.venue_facebook_url if place else '' }}" placeholder="https://facebook.com/..." />
+        </div>
+
+        <div class="col-12">
+          <hr class="my-2" />
+          <h2 class="h5 mb-1">Our vlog / channel links</h2>
+          <div class="text-muted small">Links to your content about this place (drive traffic to your channels).</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="vlog_youtube_url" class="form-label">Our YouTube video/post</label>
+          <input class="form-control" id="vlog_youtube_url" name="vlog_youtube_url" value="{{ place.vlog_youtube_url if place else '' }}" placeholder="https://youtube.com/..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="vlog_tiktok_url" class="form-label">Our TikTok</label>
+          <input class="form-control" id="vlog_tiktok_url" name="vlog_tiktok_url" value="{{ place.vlog_tiktok_url if place else '' }}" placeholder="https://tiktok.com/..." />
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label for="vlog_instagram_url" class="form-label">Our Instagram</label>
+          <input class="form-control" id="vlog_instagram_url" name="vlog_instagram_url" value="{{ place.vlog_instagram_url if place else '' }}" placeholder="https://instagram.com/..." />
+        </div>
+
+        <div class="col-12">
+          <label for="address" class="form-label">Address</label>
+          <input class="form-control" id="address" name="address" value="{{ place.address if place else '' }}" />
+        </div>
+
+        <div class="col-12 col-md-4">
+          <label for="city" class="form-label">City</label>
+          <input class="form-control" id="city" name="city" value="{{ place.city if place else '' }}" />
+        </div>
+
+        <div class="col-12 col-md-2">
+          <label for="state" class="form-label">State</label>
+          <input class="form-control" id="state" name="state" value="{{ place.state if place else '' }}" placeholder="TX" />
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label for="zipcode" class="form-label">Zip</label>
+          <input class="form-control" id="zipcode" name="zipcode" value="{{ place.zipcode if place else '' }}" />
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label for="latitude" class="form-label">Latitude</label>
+          <input class="form-control" id="latitude" name="latitude" value="{{ place.latitude if place and place.latitude is not none else '' }}" />
+        </div>
+
+        <div class="col-12 col-md-3">
+          <label for="longitude" class="form-label">Longitude</label>
+          <input class="form-control" id="longitude" name="longitude" value="{{ place.longitude if place and place.longitude is not none else '' }}" />
+        </div>
+
+        <div class="col-12">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="6">{{ place.notes if place else '' }}</textarea>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save
+          </button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places') }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

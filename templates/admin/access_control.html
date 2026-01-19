@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Access Control{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <h1 class="mb-0">Access control</h1>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places') }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to places
+    </a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <div class="text-muted small">Toggle whether anonymous (logged-out) visitors can access each feature.</div>
+        </div>
+
+        <div class="col-12">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Anonymous access</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in features %}
+                  <tr>
+                    <td class="fw-semibold">{{ f.feature }}</td>
+                    <td>
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          aria-checked="{% if f.anonymous_access %}true{% else %}false{% endif %}"
+                          id="anon_{{ f.feature }}"
+                          name="anon_{{ f.feature }}"
+                          {% if f.anonymous_access %}checked{% endif %}
+                        />
+                        <label class="form-check-label" for="anon_{{ f.feature }}">Allowed</label>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
