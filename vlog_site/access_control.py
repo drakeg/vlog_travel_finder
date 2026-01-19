@@ -10,11 +10,15 @@ from .models import AccessRule, User
 
 
 def is_authenticated() -> bool:
+    if session.get("anonymous_preview"):
+        return False
     return session.get("user_id") is not None
 
 
 def current_user() -> User | None:
     user_id = session.get("user_id")
+    if session.get("anonymous_preview"):
+        return None
     if user_id is None:
         return None
     db = get_session(current_app)

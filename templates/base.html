@@ -64,6 +64,22 @@
             </ul>
 
             <div class="d-flex gap-2 align-items-center">
+              {% if is_admin %}
+                {% if is_anonymous_preview %}
+                  <form method="post" action="{{ url_for('admin.admin_preview_stop') }}" class="mb-0">
+                    <button type="submit" class="btn btn-warning btn-sm">
+                      <i class="fa-solid fa-eye-slash me-1"></i>Exit anonymous preview
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('admin.admin_preview_anonymous') }}" class="mb-0">
+                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                      <i class="fa-solid fa-eye me-1"></i>Preview as anonymous
+                    </button>
+                  </form>
+                {% endif %}
+              {% endif %}
+
               {% if is_authenticated %}
                 <form method="post" action="{{ url_for('auth.logout') }}" class="mb-0">
                   <button type="submit" class="btn btn-outline-secondary btn-sm">
@@ -85,6 +101,11 @@
     </header>
 
     <main class="container py-4">
+      {% if is_admin and is_anonymous_preview %}
+        <div class="alert alert-warning mb-3" role="alert">
+          <strong>Anonymous preview mode:</strong> you are viewing the site as a logged-out visitor.
+        </div>
+      {% endif %}
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="mb-3">

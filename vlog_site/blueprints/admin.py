@@ -185,6 +185,20 @@ def admin_access_control() -> str:
     return render_template("admin/access_control.html", features=features)
 
 
+@admin_bp.route("/preview/anonymous", methods=["POST"])
+@admin_required
+def admin_preview_anonymous() -> str:
+    session["anonymous_preview"] = True
+    return redirect(request.referrer or url_for("public.home"))
+
+
+@admin_bp.route("/preview/stop", methods=["POST"])
+@admin_required
+def admin_preview_stop() -> str:
+    session.pop("anonymous_preview", None)
+    return redirect(request.referrer or url_for("public.home"))
+
+
 @admin_bp.route("/categories", methods=["GET", "POST"])
 @admin_required
 def admin_categories() -> str:
