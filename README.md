@@ -5,14 +5,19 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
 
 ## Features
 
+- **Auth (site-wide)**
+  - Register: `/register`
+  - Login: `/login`
+  - Logout: `/logout`
 - **Admin**
-  - Login
+  - Access control: toggle anonymous access for features (blog/places/contact/about/etc.)
+  - Anonymous preview mode (admins can simulate logged-out access)
   - Manage categories
   - Create / edit / delete places
+  - Manage blog posts
+  - View contact messages
 - **Public**
-  - Search by text
-  - Filter by city/state/category
-  - Place detail pages with external links
+  - Home, places search, blog, contact, about
 
 ## Local setup
 
@@ -57,6 +62,13 @@ export FLASK_APP=vlog_site:create_app
 flask create-admin
 ```
 
+If the user already exists (for example, created via `/register`), promote them:
+
+```bash
+export FLASK_APP=vlog_site:create_app
+flask promote-admin you@example.com
+```
+
 ### 4) Run the dev server
 
 ```bash
@@ -68,7 +80,15 @@ flask run
 Open:
 
 - Public site: `http://127.0.0.1:5000/`
-- Admin login: `http://127.0.0.1:5000/admin/login`
+- Login: `http://127.0.0.1:5000/login`
+- Admin: `http://127.0.0.1:5000/admin`
+
+## Access control
+
+As an admin, configure anonymous access for each feature:
+
+- Admin page: `http://127.0.0.1:5000/admin/access-control`
+- Use **Preview as anonymous** in the navbar to simulate logged-out access without logging out.
 
 ## Configuration
 

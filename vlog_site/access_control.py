@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 
-from flask import current_app, flash, redirect, request, session, url_for
+from flask import current_app, flash, redirect, render_template, request, session, url_for
 from sqlalchemy import select
 
 from .db import get_session
@@ -39,6 +39,12 @@ def require_feature(feature: str):
         def wrapped(*args, **kwargs):
             if anonymous_allowed(feature):
                 return view(*args, **kwargs)
+
+            if session.get("anonymous_preview"):
+                return render_template(
+                    "public/anonymous_preview_denied.html",
+                    feature=feature,
+                )
 
             if not is_authenticated():
                 flash("Please log in to access this feature", "error")
