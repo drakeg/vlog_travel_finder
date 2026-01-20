@@ -109,3 +109,74 @@ export DATABASE_URL='sqlite:////absolute/path/to/vlog_site.sqlite'
 # MySQL example:
 # export DATABASE_URL='mysql+pymysql://user:password@localhost:3306/vlog_site'
 ```
+
+## Deploying on PythonAnywhere (uWSGI)
+
+PythonAnywhere runs your Flask app via a WSGI entrypoint.
+
+### Web app setup
+
+- In the PythonAnywhere **Web** tab, create a new **Flask** web app (manual configuration is fine).
+- Set your **Source code** directory to your project (the folder that contains `app.py`).
+- Create and select a **virtualenv**.
+- Install requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
+### WSGI configuration
+
+Edit your PythonAnywhere WSGI config file (Web tab -> WSGI configuration file) and ensure it loads this project.
+
+This project provides `app.py` which creates the Flask app as `app = create_app()`. You can expose it as the WSGI `application` like this:
+
+```python
+import os
+import sys
+
+# Update this path for your username + project directory.
+project_home = "/home/YOUR_USERNAME/vlog_site"
+if project_home not in sys.path:
+    sys.path.insert(0, project_home)
+
+# Production config (set these in the Web tab -> Environment variables if you prefer).
+os.environ.setdefault("SECRET_KEY", "change-me")
+os.environ.setdefault(
+    "DATABASE_URL",
+    "sqlite:////home/YOUR_USERNAME/vlog_site/instance/vlog_site.sqlite",
+)
+
+from app import app as application
+```
+
+### Environment variables
+
+Recommended approach on PythonAnywhere is to set these in **Web tab -> Environment variables**:
+
+- `SECRET_KEY`
+- `DATABASE_URL`
+
+SQLite example `DATABASE_URL` for PythonAnywhere:
+
+```text
+sqlite:////home/YOUR_USERNAME/vlog_site/instance/vlog_site.sqlite
+```
+
+### Database initialization
+
+After the web app is created and the virtualenv is active:
+
+```bash
+export FLASK_APP=vlog_site:create_app
+flask init-db
+```
+
+Then create or promote an admin:
+
+```bash
+export FLASK_APP=vlog_site:create_app
+flask create-admin
+# or
+flask promote-admin you@example.com
+```
