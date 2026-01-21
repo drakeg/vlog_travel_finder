@@ -1,6 +1,9 @@
 import os
 import click
+import hashlib
+import hmac
 from flask import Flask
+from flask import request
 from sqlalchemy import select
 from werkzeug.security import generate_password_hash
 
@@ -10,7 +13,7 @@ from .blueprints.admin import admin_bp
 from .blueprints.auth import auth_bp
 from .blueprints.public import public_bp
 from .context import inject_globals
-from .models import User
+from .models import PageView, User
 
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,6 +36,50 @@ def create_app() -> Flask:
     )
 
     init_db(app)
+
+    @app.after_request
+    def _log_page_view(response):
+        try:
+            path = request.path or ""
+            if (
+                path.startswith("/admin")
+                or path.startswith("/static")
+                or path.startswith("/uploads")
+                or path == "/favicon.ico"
+            ):
+                return response
+
+            if request.method not in {"GET", "HEAD"}:
+                return response
+
+            db = get_session(app)
+
+            ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+            ip = (ip.split(",")[0] if ip else "").strip()
+            secret = (app.config.get("SECRET_KEY") or "").encode("utf-8")
+            ip_hash = None
+            if ip and secret:
+                ip_hash = hmac.new(secret, ip.encode("utf-8"), hashlib.sha256).hexdigest()
+
+            country = request.headers.get("CF-IPCountry") or request.headers.get("X-Country")
+            if country:
+                country = country.strip()[:16]
+
+            db.add(
+                PageView(
+                    path=path,
+                    method=request.method,
+                    status_code=int(getattr(response, "status_code", 0) or 0),
+                    referrer=(request.referrer or "")[:500] or None,
+                    user_agent=(request.headers.get("User-Agent") or "")[:500] or None,
+                    ip_hash=ip_hash,
+                    country=country,
+                )
+            )
+            db.commit()
+        except Exception:
+            pass
+        return response
 
     @app.cli.command("init-db")
     def init_db_command() -> None:

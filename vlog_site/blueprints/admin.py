@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import functools
+import os
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 from ..db import get_session
-from ..models import AccessRule, BlogPost, Category, ContactMessage, Place, User
+from ..models import AccessRule, BlogPost, Category, ContactMessage, PageView, Place, User
+from ..services.mail_service import is_smtp_configured, send_reply_email_if_configured
 from ..services.settings_service import get_setting, set_setting
 from ..utils import clean_str, coerce_float, coerce_publish_at, slugify
 
@@ -63,10 +66,11 @@ def admin_required(view):
 
 
 @admin_bp.route("")
+@admin_bp.route("/")
 def admin_index() -> str:
     if not is_admin():
         return redirect(url_for("auth.login", next="/admin"))
-    return redirect(url_for("admin.admin_places"))
+    return redirect(url_for("admin.admin_dashboard"))
 
 
 @admin_bp.route("/login", methods=["GET", "POST"])
@@ -120,7 +124,8 @@ def admin_settings() -> str:
 
     if request.method == "POST":
         site_name = clean_str(request.form.get("site_name"))
-        hero_image_url = clean_str(request.form.get("hero_image_url"))
+        theme_primary = clean_str(request.form.get("theme_primary"))
+        theme_secondary = clean_str(request.form.get("theme_secondary"))
         hero_image_alt = clean_str(request.form.get("hero_image_alt"))
         contact_email = clean_str(request.form.get("contact_email"))
         contact_phone = clean_str(request.form.get("contact_phone"))
@@ -133,7 +138,8 @@ def admin_settings() -> str:
         smtp_to = clean_str(request.form.get("smtp_to"))
 
         set_setting(db, "site_name", site_name)
-        set_setting(db, "hero_image_url", hero_image_url)
+        set_setting(db, "theme_primary", theme_primary)
+        set_setting(db, "theme_secondary", theme_secondary)
         set_setting(db, "hero_image_alt", hero_image_alt)
         set_setting(db, "contact_email", contact_email)
         set_setting(db, "contact_phone", contact_phone)
@@ -145,6 +151,36 @@ def admin_settings() -> str:
         set_setting(db, "smtp_from", smtp_from)
         set_setting(db, "smtp_to", smtp_to)
 
+        uploaded = request.files.get("hero_image_file")
+        if uploaded is not None and uploaded.filename:
+            filename = secure_filename(uploaded.filename)
+            _, ext = os.path.splitext(filename.lower())
+            if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+                flash("Hero image must be a JPG, PNG, WEBP, or GIF", "error")
+                return redirect(url_for("admin.admin_settings"))
+
+            upload_dir = os.path.join(current_app.instance_path, "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            stored_name = f"hero{ext}"
+            uploaded.save(os.path.join(upload_dir, stored_name))
+            set_setting(db, "hero_image_filename", stored_name)
+
+        uploaded = request.files.get("logo_file")
+        if uploaded is not None and uploaded.filename:
+            filename = secure_filename(uploaded.filename)
+            _, ext = os.path.splitext(filename.lower())
+            if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}:
+                flash("Logo must be a JPG, PNG, WEBP, GIF, or SVG", "error")
+                return redirect(url_for("admin.admin_settings"))
+
+            upload_dir = os.path.join(current_app.instance_path, "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            stored_name = f"logo{ext}"
+            uploaded.save(os.path.join(upload_dir, stored_name))
+            set_setting(db, "logo_filename", stored_name)
+
         db.commit()
         flash("Settings saved", "info")
         return redirect(url_for("admin.admin_settings"))
@@ -152,8 +188,11 @@ def admin_settings() -> str:
     return render_template(
         "admin/settings.html",
         site_name=get_setting(db, "site_name"),
-        hero_image_url=get_setting(db, "hero_image_url"),
+        theme_primary=get_setting(db, "theme_primary"),
+        theme_secondary=get_setting(db, "theme_secondary"),
+        hero_image_filename=get_setting(db, "hero_image_filename"),
         hero_image_alt=get_setting(db, "hero_image_alt"),
+        logo_filename=get_setting(db, "logo_filename"),
         contact_email=get_setting(db, "contact_email"),
         contact_phone=get_setting(db, "contact_phone"),
         featured_youtube_url=get_setting(db, "featured_youtube_url"),
@@ -332,6 +371,64 @@ def admin_place_delete(place_id: int) -> str:
     return redirect(url_for("admin.admin_places"))
 
 
+@admin_bp.route("/dashboard")
+@admin_required
+def admin_dashboard() -> str:
+    db = get_session(current_app)
+
+    total_views = db.execute(select(func.count()).select_from(PageView)).scalar_one()
+
+    last_7 = db.execute(
+        select(func.count()).select_from(PageView).where(text("created_at >= datetime('now','-7 days')"))
+    ).scalar_one()
+
+    last_30 = db.execute(
+        select(func.count()).select_from(PageView).where(text("created_at >= datetime('now','-30 days')"))
+    ).scalar_one()
+
+    top_pages = db.execute(
+        select(PageView.path, text("COUNT(1) as c"))
+        .group_by(PageView.path)
+        .order_by(text("c DESC"))
+        .limit(10)
+    ).all()
+
+    top_referrers = db.execute(
+        select(PageView.referrer, text("COUNT(1) as c"))
+        .where(PageView.referrer.is_not(None))
+        .group_by(PageView.referrer)
+        .order_by(text("c DESC"))
+        .limit(10)
+    ).all()
+
+    top_countries = db.execute(
+        select(PageView.country, text("COUNT(1) as c"))
+        .where(PageView.country.is_not(None))
+        .group_by(PageView.country)
+        .order_by(text("c DESC"))
+        .limit(10)
+    ).all()
+
+    daily = db.execute(
+        select(text("substr(created_at, 1, 10) as day"), text("COUNT(1) as c"))
+        .select_from(PageView)
+        .where(text("created_at >= datetime('now','-14 days')"))
+        .group_by(text("day"))
+        .order_by(text("day ASC"))
+    ).all()
+
+    return render_template(
+        "admin/dashboard.html",
+        total_views=int(total_views or 0),
+        last_7=int(last_7 or 0),
+        last_30=int(last_30 or 0),
+        top_pages=[{"path": r[0], "count": int(r[1] or 0)} for r in top_pages],
+        top_referrers=[{"referrer": r[0], "count": int(r[1] or 0)} for r in top_referrers],
+        top_countries=[{"country": r[0], "count": int(r[1] or 0)} for r in top_countries],
+        daily=[{"day": r[0], "count": int(r[1] or 0)} for r in daily],
+    )
+
+
 @admin_bp.route("/posts")
 @admin_required
 def admin_posts() -> str:
@@ -438,6 +535,7 @@ def admin_post_delete(post_id: int) -> str:
 @admin_required
 def admin_messages() -> str:
     db = get_session(current_app)
+    smtp_configured = is_smtp_configured(db=db)
     rows = (
         db.execute(
             select(ContactMessage).order_by(
@@ -461,7 +559,55 @@ def admin_messages() -> str:
         }
         for m in rows
     ]
-    return render_template("admin/messages.html", messages=messages)
+    return render_template("admin/messages.html", messages=messages, smtp_configured=smtp_configured)
+
+
+@admin_bp.route("/messages/<int:message_id>/reply", methods=["GET", "POST"])
+@admin_required
+def admin_message_reply(message_id: int) -> str:
+    db = get_session(current_app)
+    msg = db.get(ContactMessage, message_id)
+    if msg is None:
+        abort(404)
+
+    smtp_configured = is_smtp_configured(db=db)
+    if request.method == "POST":
+        if not smtp_configured:
+            flash("SMTP is not configured. Configure it in Site settings to send replies.", "error")
+            return redirect(url_for("admin.admin_messages"))
+
+        subject = clean_str(request.form.get("subject")) or f"Re: {msg.subject}"
+        body = request.form.get("body") or ""
+        if not body.strip():
+            flash("Reply message is required", "error")
+        else:
+            sent = send_reply_email_if_configured(
+                db=db,
+                to_addr=msg.email,
+                subject=subject,
+                reply_body=body,
+                original_message=msg.message,
+            )
+            if sent:
+                msg.answered_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                db.commit()
+                flash("Reply sent", "info")
+                return redirect(url_for("admin.admin_messages"))
+            flash("SMTP is not configured. Configure it in Site settings to send replies.", "error")
+
+    return render_template(
+        "admin/message_reply.html",
+        smtp_configured=smtp_configured,
+        message={
+            "id": msg.id,
+            "name": msg.name,
+            "email": msg.email,
+            "subject": msg.subject,
+            "message": msg.message,
+            "created_at": msg.created_at,
+        },
+        default_subject=f"Re: {msg.subject}",
+    )
 
 
 @admin_bp.route("/messages/<int:message_id>/toggle-answered", methods=["POST"])

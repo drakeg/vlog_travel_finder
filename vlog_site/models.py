@@ -23,6 +23,24 @@ class AdminUser(Base):
     )
 
 
+class PageView(Base):
+    __tablename__ = "page_view"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    path: Mapped[str] = mapped_column(String, nullable=False)
+    method: Mapped[str] = mapped_column(String, nullable=False, default="GET")
+    status_code: Mapped[int] = mapped_column(nullable=False, default=200)
+    referrer: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 class User(Base):
     __tablename__ = "user"
 

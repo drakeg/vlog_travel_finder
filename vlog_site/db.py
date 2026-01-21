@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 5
+        latest_version = 6
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -199,8 +199,6 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
                     );
 
-                    CREATE INDEX IF NOT EXISTS idx_blog_post_status_publish_at ON blog_post(status, publish_at);
-
                     CREATE TABLE IF NOT EXISTS contact_message (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
@@ -211,14 +209,20 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                         created_at TEXT NOT NULL DEFAULT (datetime('now'))
                     );
 
+                    CREATE INDEX IF NOT EXISTS idx_blog_post_status_publish_at ON blog_post(status, publish_at);
+
                     CREATE INDEX IF NOT EXISTS idx_contact_message_answered_at ON contact_message(answered_at);
                     """
                 )
 
                 for k in [
                     "site_name",
+                    "theme_primary",
+                    "theme_secondary",
                     "hero_image_url",
+                    "hero_image_filename",
                     "hero_image_alt",
+                    "logo_filename",
                     "featured_youtube_url",
                     "smtp_host",
                     "smtp_port",
@@ -230,6 +234,14 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                     if k == "site_name":
                         conn.execute(
                             text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('site_name', 'Vlog Travel Finder')")
+                        )
+                    elif k == "theme_primary":
+                        conn.execute(
+                            text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('theme_primary', '#2f5dff')")
+                        )
+                    elif k == "theme_secondary":
+                        conn.execute(
+                            text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('theme_secondary', '#12b3a8')")
                         )
                     else:
                         conn.execute(
@@ -294,11 +306,41 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 _set_user_version(conn, version)
                 continue
 
+            if version == 5:
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS page_view (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        path TEXT NOT NULL,
+                        method TEXT NOT NULL DEFAULT 'GET',
+                        status_code INTEGER NOT NULL DEFAULT 200,
+                        referrer TEXT NULL,
+                        user_agent TEXT NULL,
+                        ip_hash TEXT NULL,
+                        country TEXT NULL,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_page_view_created_at ON page_view(created_at);
+                    CREATE INDEX IF NOT EXISTS idx_page_view_path_created_at ON page_view(path, created_at);
+                    CREATE INDEX IF NOT EXISTS idx_page_view_country_created_at ON page_view(country, created_at);
+                    """
+                )
+
+                version = 6
+                _set_user_version(conn, version)
+                continue
+
             raise RuntimeError(f"Unsupported schema version: {version}")
 
         conn.execute(
             text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('site_name', 'Vlog Travel Finder')")
         )
 
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('theme_primary', '#2f5dff')"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('theme_secondary', '#12b3a8')"))
+
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_url', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_filename', NULL)"))
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_alt', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('logo_filename', NULL)"))

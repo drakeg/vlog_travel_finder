@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Dashboard{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="mb-1">Dashboard</h1>
+      <div class="text-muted">Visitor stats (page views).</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total page views</div>
+          <div class="display-6 fw-semibold">{{ total_views }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Last 7 days</div>
+          <div class="display-6 fw-semibold">{{ last_7 }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Last 30 days</div>
+          <div class="display-6 fw-semibold">{{ last_30 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Top pages</h2>
+          {% if top_pages %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Path</th>
+                    <th class="text-end">Views</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in top_pages %}
+                    <tr>
+                      <td><code>{{ r['path'] }}</code></td>
+                      <td class="text-end">{{ r['count'] }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted">No data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Countries</h2>
+          <div class="text-muted small mb-2">Populated automatically when a reverse proxy provides a country header (e.g. Cloudflare <code>CF-IPCountry</code>).</div>
+          {% if top_countries %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Country</th>
+                    <th class="text-end">Views</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in top_countries %}
+                    <tr>
+                      <td>{{ r['country'] }}</td>
+                      <td class="text-end">{{ r['count'] }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted">No country data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Referrers</h2>
+          {% if top_referrers %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Referrer</th>
+                    <th class="text-end">Views</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in top_referrers %}
+                    <tr>
+                      <td class="text-truncate" style="max-width: 700px"><code>{{ r['referrer'] }}</code></td>
+                      <td class="text-end">{{ r['count'] }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted">No referrers yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">Daily page views (last 14 days)</h2>
+          {% if daily %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th class="text-end">Views</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in daily %}
+                    <tr>
+                      <td>{{ r['day'] }}</td>
+                      <td class="text-end">{{ r['count'] }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted">No data yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

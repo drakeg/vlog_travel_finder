@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import send_from_directory
 from sqlalchemy import or_, select, text
 
 from ..access_control import require_feature
@@ -15,12 +18,23 @@ from ..utils import clean_str
 public_bp = Blueprint("public", __name__)
 
 
+@public_bp.route("/uploads/<path:filename>")
+def uploaded_file(filename: str):
+    upload_dir = os.path.join(current_app.instance_path, "uploads")
+    return send_from_directory(upload_dir, filename)
+
+
 @public_bp.route("/")
 @require_feature("home")
 def home() -> str:
     db = get_session(current_app)
     featured_youtube_url = get_setting(db, "featured_youtube_url")
-    hero_image_url = get_setting(db, "hero_image_url")
+    hero_image_filename = get_setting(db, "hero_image_filename")
+    hero_image_url = (
+        url_for("public.uploaded_file", filename=hero_image_filename)
+        if hero_image_filename
+        else get_setting(db, "hero_image_url")
+    )
     hero_image_alt = get_setting(db, "hero_image_alt")
 
     posts = (

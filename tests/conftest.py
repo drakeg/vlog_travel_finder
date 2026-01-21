@@ -1,9 +1,14 @@
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 import secrets
 
 import pytest
 from werkzeug.security import generate_password_hash
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from vlog_site import create_app
 from vlog_site.db import get_session

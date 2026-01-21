@@ -40,16 +40,13 @@ def require_feature(feature: str):
             if anonymous_allowed(feature):
                 return view(*args, **kwargs)
 
-            if session.get("anonymous_preview"):
-                return render_template(
-                    "public/anonymous_preview_denied.html",
-                    feature=feature,
-                )
-
             if not is_authenticated():
-                flash("Please log in to access this feature", "error")
+                flash(
+                    "This page is for members. Create a free account to continue (or log in if you already have one).",
+                    "info",
+                )
                 next_url = request.full_path if request.query_string else request.path
-                return redirect(url_for("auth.login", next=next_url))
+                return redirect(url_for("auth.register", next=next_url))
 
             return view(*args, **kwargs)
 

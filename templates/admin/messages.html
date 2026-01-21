@@ -49,15 +49,23 @@
                   </td>
                   <td class="text-muted">{{ m['created_at'] }}</td>
                   <td class="text-end">
-                    <form method="post" action="{{ url_for('admin.admin_message_toggle_answered', message_id=m['id']) }}" class="mb-0">
-                      <button type="submit" class="btn btn-sm btn-outline-primary">
-                        {% if m['answered_at'] %}
-                          Mark un-answered
-                        {% else %}
-                          Mark answered
-                        {% endif %}
-                      </button>
-                    </form>
+                    <div class="d-flex gap-2 justify-content-end">
+                      {% if smtp_configured %}
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.admin_message_reply', message_id=m['id']) }}">Reply</a>
+                      {% else %}
+                        <a class="btn btn-sm btn-outline-secondary disabled" href="#" tabindex="-1" aria-disabled="true">Reply</a>
+                      {% endif %}
+
+                      <form method="post" action="{{ url_for('admin.admin_message_toggle_answered', message_id=m['id']) }}" class="mb-0">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                          {% if m['answered_at'] %}
+                            Mark un-answered
+                          {% else %}
+                            Mark answered
+                          {% endif %}
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               {% endfor %}

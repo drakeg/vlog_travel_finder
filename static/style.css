@@ -3,11 +3,22 @@
 :root {
   --brand-1: #2f5dff;
   --brand-2: #12b3a8;
+  --bs-primary: var(--brand-1);
+  --bs-link-color: var(--brand-1);
+  --bs-link-hover-color: color-mix(in srgb, var(--brand-1) 75%, #000);
 }
 
 body {
-  background: radial-gradient(1200px 500px at 15% 0%, rgba(47, 93, 255, 0.10), transparent 60%),
-    radial-gradient(900px 420px at 85% 10%, rgba(18, 179, 168, 0.10), transparent 60%),
+  background: radial-gradient(
+      1200px 500px at 15% 0%,
+      color-mix(in srgb, var(--brand-1) 12%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 420px at 85% 10%,
+      color-mix(in srgb, var(--brand-2) 12%, transparent),
+      transparent 60%
+    ),
     linear-gradient(180deg, #f8f9fa 0%, #ffffff 70%);
 }
 
@@ -15,13 +26,81 @@ body {
   letter-spacing: 0.2px;
 }
 
+.navbar {
+  border-bottom: 3px solid color-mix(in srgb, var(--brand-1) 35%, transparent);
+}
+
+.admin-subnav {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brand-1) 10%, transparent),
+    color-mix(in srgb, var(--brand-2) 10%, transparent)
+  );
+}
+
+.admin-subnav .btn-outline-secondary {
+  border-color: color-mix(in srgb, var(--brand-1) 35%, #6c757d);
+  color: #212529;
+}
+
+.admin-subnav .btn-outline-secondary:hover {
+  background: color-mix(in srgb, var(--brand-1) 12%, transparent);
+  border-color: color-mix(in srgb, var(--brand-1) 55%, #6c757d);
+}
+
+.site-logo {
+  height: 40px;
+  width: auto;
+  display: inline-block;
+}
+
+.nav-links-centered {
+  align-items: center;
+}
+
+.navbar-actions .btn {
+  white-space: nowrap;
+}
+
+.btn-pill {
+  border-radius: 999px;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+@media (max-width: 576px) {
+  .navbar-actions .btn-label {
+    display: none;
+  }
+}
+
+@media (min-width: 992px) {
+  .nav-links-centered {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .nav-logo-item .nav-link {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .nav-links-centered .nav-item {
+    margin: 0 0.25rem;
+  }
+}
+
 .card {
   border-radius: 0.9rem;
 }
 
 .hero-card {
-  background: linear-gradient(135deg, rgba(47, 93, 255, 0.12), rgba(18, 179, 168, 0.12));
-  border: 1px solid rgba(13, 110, 253, 0.15);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-1) 16%, transparent),
+    color-mix(in srgb, var(--brand-2) 16%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--brand-1) 22%, transparent);
 }
 
 .hero-card .hero-lead {
@@ -29,7 +108,7 @@ body {
 }
 
 .btn-primary {
-  box-shadow: 0 0.5rem 1rem rgba(47, 93, 255, 0.18);
+  box-shadow: 0 0.5rem 1rem color-mix(in srgb, var(--brand-1) 22%, transparent);
 }
 
 .hero-image-wrap {

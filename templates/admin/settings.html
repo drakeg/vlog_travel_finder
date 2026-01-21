@@ -12,7 +12,7 @@
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <form method="post" class="row g-3">
+      <form method="post" class="row g-3" enctype="multipart/form-data">
         <div class="col-12">
           <h2 class="h5 mb-1">Public site</h2>
           <div class="text-muted small">Optional settings used on the public pages.</div>
@@ -31,16 +31,35 @@
           />
         </div>
 
+        <div class="col-12" aria-labelledby="color_scheme_label">
+          <div id="color_scheme_label" class="form-label">Color scheme</div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="theme_primary" class="form-label text-muted small mb-1">Primary</label>
+              <input class="form-control form-control-color" id="theme_primary" name="theme_primary" type="color" value="{{ theme_primary or '#2f5dff' }}" title="Choose primary color" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="theme_secondary" class="form-label text-muted small mb-1">Secondary</label>
+              <input class="form-control form-control-color" id="theme_secondary" name="theme_secondary" type="color" value="{{ theme_secondary or '#12b3a8' }}" title="Choose secondary color" />
+            </div>
+          </div>
+          <div class="text-muted small mt-1">Used for gradients and accents across the site.</div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <label for="logo_file" class="form-label">Site logo</label>
+          <input class="form-control" id="logo_file" name="logo_file" type="file" accept="image/*,.svg" />
+          {% if logo_filename %}
+            <div class="text-muted small mt-1">Current: {{ logo_filename }}</div>
+          {% endif %}
+        </div>
+
         <div class="col-12">
-          <label for="hero_image_url" class="form-label">Homepage hero image URL</label>
-          <input
-            class="form-control"
-            id="hero_image_url"
-            name="hero_image_url"
-            type="url"
-            value="{{ hero_image_url or '' }}"
-            placeholder="https://..."
-          />
+          <label for="hero_image_file" class="form-label">Homepage hero image</label>
+          <input class="form-control" id="hero_image_file" name="hero_image_file" type="file" accept="image/*" />
+          {% if hero_image_filename %}
+            <div class="text-muted small mt-1">Current: {{ hero_image_filename }}</div>
+          {% endif %}
           <div class="text-muted small mt-1">Recommended: at least 1600px wide. The image is cropped to fit.</div>
         </div>
 
