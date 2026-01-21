@@ -135,8 +135,10 @@ This project provides `app.py` which creates the Flask app as `app = create_app(
 import os
 import sys
 
-# Update this path for your username + project directory.
-project_home = "/home/YOUR_USERNAME/vlog_site"
+# Update this path to the repo root (the folder that contains app.py and vlog_site/).
+# Example:
+# project_home = "/home/drakeg/vlog_travel_finder"
+project_home = "/home/YOUR_USERNAME/vlog_travel_finder"
 if project_home not in sys.path:
     sys.path.insert(0, project_home)
 
@@ -144,7 +146,7 @@ if project_home not in sys.path:
 os.environ.setdefault("SECRET_KEY", "change-me")
 os.environ.setdefault(
     "DATABASE_URL",
-    "sqlite:////home/YOUR_USERNAME/vlog_site/instance/vlog_site.sqlite",
+    "sqlite:////home/YOUR_USERNAME/vlog_travel_finder/instance/vlog_site.sqlite",
 )
 
 from app import app as application

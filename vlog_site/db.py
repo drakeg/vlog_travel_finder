@@ -90,70 +90,59 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
         latest_version = 5
         while version < latest_version:
             if version == 0:
-                conn.execute(
-                    text(
-                        """
-                        CREATE TABLE IF NOT EXISTS admin_user (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            username TEXT UNIQUE NOT NULL,
-                            password_hash TEXT NOT NULL,
-                            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-                        );
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS admin_user (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                    );
 
-                        CREATE TABLE IF NOT EXISTS category (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT UNIQUE NOT NULL
-                        );
+                    CREATE TABLE IF NOT EXISTS category (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE NOT NULL
+                    );
 
-                        CREATE TABLE IF NOT EXISTS place (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT NOT NULL,
-                            category_id INTEGER NULL,
-                            address TEXT NULL,
-                            city TEXT NULL,
-                            state TEXT NULL,
-                            zipcode TEXT NULL,
-                            latitude REAL NULL,
-                            longitude REAL NULL,
-                            website_url TEXT NULL,
-                            youtube_url TEXT NULL,
-                            tiktok_url TEXT NULL,
-                            notes TEXT NULL,
-                            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                            FOREIGN KEY (category_id) REFERENCES category (id) ON DELETE SET NULL
-                        );
+                    CREATE TABLE IF NOT EXISTS place (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        category_id INTEGER NULL,
+                        address TEXT NULL,
+                        city TEXT NULL,
+                        state TEXT NULL,
+                        zipcode TEXT NULL,
+                        latitude REAL NULL,
+                        longitude REAL NULL,
+                        website_url TEXT NULL,
+                        youtube_url TEXT NULL,
+                        tiktok_url TEXT NULL,
+                        notes TEXT NULL,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (category_id) REFERENCES category (id) ON DELETE SET NULL
+                    );
 
-                        CREATE INDEX IF NOT EXISTS idx_place_city ON place(city);
-                        CREATE INDEX IF NOT EXISTS idx_place_state ON place(state);
-                        CREATE INDEX IF NOT EXISTS idx_place_category ON place(category_id);
-                        """
-                    )
+                    CREATE INDEX IF NOT EXISTS idx_place_city ON place(city);
+                    CREATE INDEX IF NOT EXISTS idx_place_state ON place(state);
+                    CREATE INDEX IF NOT EXISTS idx_place_category ON place(category_id);
+                    """
                 )
                 version = 1
                 _set_user_version(conn, version)
                 continue
 
             if version == 1:
-                conn.execute(
-                    text(
-                        """
-                        CREATE TABLE IF NOT EXISTS site_setting (
-                            key TEXT PRIMARY KEY,
-                            value TEXT NULL
-                        );
-                        """
-                    )
-                )
-                conn.execute(
-                    text(
-                        "INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_email', NULL)"
-                    )
-                )
-                conn.execute(
-                    text(
-                        "INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_phone', NULL)"
-                    )
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS site_setting (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NULL
+                    );
+
+                    INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_email', NULL);
+                    INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_phone', NULL);
+                    """
                 )
                 version = 2
                 _set_user_version(conn, version)
