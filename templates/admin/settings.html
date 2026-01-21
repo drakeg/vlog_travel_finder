@@ -90,6 +90,19 @@
         </div>
 
         <div class="col-12">
+          <label for="youtube_channel" class="form-label">YouTube channel (for Latest Video)</label>
+          <input
+            class="form-control"
+            id="youtube_channel"
+            name="youtube_channel"
+            type="text"
+            value="{{ youtube_channel or '' }}"
+            placeholder="UCxxxxxxxxxxxxxxxxxxxxxx or https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx"
+          />
+          <div class="text-muted small mt-1">Used to show your latest full-length upload on the homepage (via YouTube RSS; no API key).</div>
+        </div>
+
+        <div class="col-12">
           <hr class="my-2" />
           <h2 class="h5 mb-1">Contact info</h2>
           <div class="text-muted small">Displayed in the footer and on the contact page.</div>

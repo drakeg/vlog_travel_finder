@@ -12,6 +12,7 @@ from ..models import BlogPost, Category, ContactMessage, Place
 from ..services.mail_service import send_contact_email_if_configured
 from ..services.markdown_service import render_markdown
 from ..services.settings_service import get_setting
+from ..services.youtube_service import get_latest_video
 from ..utils import clean_str
 
 
@@ -29,6 +30,7 @@ def uploaded_file(filename: str):
 def home() -> str:
     db = get_session(current_app)
     featured_youtube_url = get_setting(db, "featured_youtube_url")
+    latest_video = get_latest_video(db=db)
     hero_image_filename = get_setting(db, "hero_image_filename")
     hero_image_url = (
         url_for("public.uploaded_file", filename=hero_image_filename)
@@ -54,6 +56,7 @@ def home() -> str:
     return render_template(
         "public/home.html",
         featured_youtube_url=featured_youtube_url,
+        latest_video=latest_video,
         hero_image_url=hero_image_url,
         hero_image_alt=hero_image_alt,
         posts=posts,

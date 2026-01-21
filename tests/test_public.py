@@ -1,6 +1,7 @@
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
 from vlog_site.models import PageView
+from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
     resp = client.get("/")
@@ -8,6 +9,32 @@ def test_home_ok(client):
     body = resp.get_data(as_text=True)
     assert "--brand-1" in body
     assert "--brand-2" in body
+
+
+def test_home_renders_latest_video_when_channel_configured(client, app, monkeypatch):
+    rss = """<?xml version='1.0' encoding='UTF-8'?>
+    <feed xmlns='http://www.w3.org/2005/Atom' xmlns:yt='http://www.youtube.com/xml/schemas/2015'>
+      <entry>
+        <yt:videoId>abc123</yt:videoId>
+        <title>My Latest Upload</title>
+      </entry>
+    </feed>
+    """
+
+    with app.app_context():
+        db = get_session(app)
+        set_setting(db, "youtube_channel", "UC1234567890abcdef")
+        db.commit()
+
+    monkeypatch.setattr("vlog_site.services.youtube_service._fetch_rss", lambda channel_id: rss)
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Latest video" in body
+    assert "My Latest Upload" in body
+    assert "https://www.youtube.com/watch?v=abc123" in body
+    assert "https://www.youtube.com/embed/abc123" in body
 
 
 def test_page_view_logged_for_public_pages(client, app):

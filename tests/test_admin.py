@@ -177,6 +177,24 @@ def test_admin_theme_colors_save(client, app, admin_password):
         assert get_setting(db, "theme_secondary") == "#aabbcc"
 
 
+def test_admin_youtube_channel_setting_saves(client, app, admin_password):
+    _login(client, admin_password)
+
+    resp = client.post(
+        "/admin/settings",
+        data={
+            "site_name": "Test",
+            "youtube_channel": "UC1234567890abcdef",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        assert get_setting(db, "youtube_channel") == "UC1234567890abcdef"
+
+
 def test_admin_subnav_present_on_admin_pages(client, admin_password):
     _login(client, admin_password)
     resp = client.get("/admin/posts")

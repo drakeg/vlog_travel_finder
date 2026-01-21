@@ -343,4 +343,14 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_url', NULL)"))
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_filename', NULL)"))
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_alt', NULL)"))
+
         conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('logo_filename', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('featured_youtube_url', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('youtube_channel', NULL)"))
+
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_host', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_port', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_username', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_password', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_from', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('smtp_to', NULL)"))

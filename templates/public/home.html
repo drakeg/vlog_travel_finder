@@ -48,28 +48,60 @@
     </div>
   </div>
 
-  <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="50">
-    <div class="card-body p-4">
-      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-2">
-        <h2 class="h5 mb-0">Latest posts</h2>
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('public.blog_index') }}">
-          View all
-          <i class="fa-solid fa-arrow-right ms-1"></i>
-        </a>
-      </div>
-
-      {% if posts %}
-        <div class="list-group list-group-flush">
-          {% for p in posts %}
-            <a class="list-group-item list-group-item-action" href="{{ url_for('public.blog_post', slug=p.slug) }}">
-              <div class="fw-semibold">{{ p.title }}</div>
-              <div class="text-muted small">Read more</div>
+  <div class="row g-4">
+    <div class="col-12 {% if latest_video %}col-lg-8{% endif %}">
+      <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="50">
+        <div class="card-body p-4">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-2">
+            <h2 class="h5 mb-0">Latest posts</h2>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('public.blog_index') }}">
+              View all
+              <i class="fa-solid fa-arrow-right ms-1"></i>
             </a>
-          {% endfor %}
+          </div>
+
+          {% if posts %}
+            <div class="list-group list-group-flush">
+              {% for p in posts %}
+                <a class="list-group-item list-group-item-action" href="{{ url_for('public.blog_post', slug=p.slug) }}">
+                  <div class="fw-semibold">{{ p.title }}</div>
+                  <div class="text-muted small">Read more</div>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted">No posts yet.</div>
+          {% endif %}
         </div>
-      {% else %}
-        <div class="text-muted">No posts yet.</div>
-      {% endif %}
+      </div>
     </div>
+
+    {% if latest_video %}
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm" data-aos="fade-up" data-aos-delay="75">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <h2 class="h6 mb-0">Latest video</h2>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ latest_video.url }}" target="_blank" rel="noopener noreferrer">
+                YouTube
+                <i class="fa-solid fa-arrow-right ms-1"></i>
+              </a>
+            </div>
+
+            <div class="ratio ratio-16x9 rounded overflow-hidden mb-2">
+              <iframe
+                src="{{ latest_video.embed_url }}"
+                title="{{ latest_video.title }}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
+            </div>
+
+            <div class="fw-semibold">{{ latest_video.title }}</div>
+            <div class="text-muted small">Watch right here, or open in YouTube.</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
 {% endblock %}

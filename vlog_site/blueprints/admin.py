@@ -130,6 +130,7 @@ def admin_settings() -> str:
         contact_email = clean_str(request.form.get("contact_email"))
         contact_phone = clean_str(request.form.get("contact_phone"))
         featured_youtube_url = clean_str(request.form.get("featured_youtube_url"))
+        youtube_channel = clean_str(request.form.get("youtube_channel"))
         smtp_host = clean_str(request.form.get("smtp_host"))
         smtp_port = clean_str(request.form.get("smtp_port"))
         smtp_username = clean_str(request.form.get("smtp_username"))
@@ -144,6 +145,7 @@ def admin_settings() -> str:
         set_setting(db, "contact_email", contact_email)
         set_setting(db, "contact_phone", contact_phone)
         set_setting(db, "featured_youtube_url", featured_youtube_url)
+        set_setting(db, "youtube_channel", youtube_channel)
         set_setting(db, "smtp_host", smtp_host)
         set_setting(db, "smtp_port", smtp_port)
         set_setting(db, "smtp_username", smtp_username)
@@ -196,6 +198,7 @@ def admin_settings() -> str:
         contact_email=get_setting(db, "contact_email"),
         contact_phone=get_setting(db, "contact_phone"),
         featured_youtube_url=get_setting(db, "featured_youtube_url"),
+        youtube_channel=get_setting(db, "youtube_channel"),
         smtp_host=get_setting(db, "smtp_host"),
         smtp_port=get_setting(db, "smtp_port"),
         smtp_username=get_setting(db, "smtp_username"),
