@@ -18,6 +18,45 @@
           <div class="text-muted small">Optional settings used on the public pages.</div>
         </div>
 
+        <div class="col-12 col-lg-6">
+          <label for="site_name" class="form-label">Site name</label>
+          <input
+            class="form-control"
+            id="site_name"
+            name="site_name"
+            type="text"
+            value="{{ site_name or '' }}"
+            placeholder="Your channel name"
+            autocomplete="organization"
+          />
+        </div>
+
+        <div class="col-12">
+          <label for="hero_image_url" class="form-label">Homepage hero image URL</label>
+          <input
+            class="form-control"
+            id="hero_image_url"
+            name="hero_image_url"
+            type="url"
+            value="{{ hero_image_url or '' }}"
+            placeholder="https://..."
+          />
+          <div class="text-muted small mt-1">Recommended: at least 1600px wide. The image is cropped to fit.</div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+          <label for="hero_image_alt" class="form-label">Hero image alt text</label>
+          <input
+            class="form-control"
+            id="hero_image_alt"
+            name="hero_image_alt"
+            type="text"
+            value="{{ hero_image_alt or '' }}"
+            placeholder="Scenic mountain road at sunrise"
+          />
+          <div class="text-muted small mt-1">Shown if the image cannot be displayed, and used by screen readers.</div>
+        </div>
+
         <div class="col-12">
           <label for="featured_youtube_url" class="form-label">Featured YouTube URL</label>
           <input

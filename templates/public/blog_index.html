@@ -3,11 +3,9 @@
 {% block title %}Blog{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
-    <div>
-      <h1 class="mb-1">Blog</h1>
-      <div class="text-muted">Trip recaps, guides, and behind-the-scenes.</div>
-    </div>
+  <div class="mb-4">
+    <h1 class="mb-1">Blog</h1>
+    <div class="text-muted">Trip recaps, guides, and behind-the-scenes.</div>
   </div>
 
   {% if posts %}
@@ -15,7 +13,7 @@
       {% for p in posts %}
         <div class="col-12 col-lg-6">
           <div class="card shadow-sm h-100">
-            <div class="card-body">
+            <div class="card-body p-4">
               <h2 class="h5 mb-2">
                 <a class="text-decoration-none" href="{{ url_for('public.blog_post', slug=p.slug) }}">{{ p.title }}</a>
               </h2>

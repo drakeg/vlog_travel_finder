@@ -20,6 +20,7 @@ def inject_globals():
         "is_authenticated": (user is not None and not is_anonymous_preview),
         "is_admin": (user is not None and user.role == "admin"),
         "is_anonymous_preview": is_anonymous_preview,
+        "site_name": get_setting(db, "site_name") or "Vlog Travel Finder",
         "contact_email": get_setting(db, "contact_email"),
         "contact_phone": get_setting(db, "contact_phone"),
     }

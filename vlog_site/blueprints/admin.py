@@ -119,6 +119,9 @@ def admin_settings() -> str:
     db = get_session(current_app)
 
     if request.method == "POST":
+        site_name = clean_str(request.form.get("site_name"))
+        hero_image_url = clean_str(request.form.get("hero_image_url"))
+        hero_image_alt = clean_str(request.form.get("hero_image_alt"))
         contact_email = clean_str(request.form.get("contact_email"))
         contact_phone = clean_str(request.form.get("contact_phone"))
         featured_youtube_url = clean_str(request.form.get("featured_youtube_url"))
@@ -129,6 +132,9 @@ def admin_settings() -> str:
         smtp_from = clean_str(request.form.get("smtp_from"))
         smtp_to = clean_str(request.form.get("smtp_to"))
 
+        set_setting(db, "site_name", site_name)
+        set_setting(db, "hero_image_url", hero_image_url)
+        set_setting(db, "hero_image_alt", hero_image_alt)
         set_setting(db, "contact_email", contact_email)
         set_setting(db, "contact_phone", contact_phone)
         set_setting(db, "featured_youtube_url", featured_youtube_url)
@@ -145,6 +151,9 @@ def admin_settings() -> str:
 
     return render_template(
         "admin/settings.html",
+        site_name=get_setting(db, "site_name"),
+        hero_image_url=get_setting(db, "hero_image_url"),
+        hero_image_alt=get_setting(db, "hero_image_alt"),
         contact_email=get_setting(db, "contact_email"),
         contact_phone=get_setting(db, "contact_phone"),
         featured_youtube_url=get_setting(db, "featured_youtube_url"),

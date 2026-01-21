@@ -140,6 +140,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                         value TEXT NULL
                     );
 
+                    INSERT OR IGNORE INTO site_setting (key, value) VALUES ('site_name', 'Vlog Travel Finder');
                     INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_email', NULL);
                     INSERT OR IGNORE INTO site_setting (key, value) VALUES ('contact_phone', NULL);
                     """
@@ -215,6 +216,9 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 )
 
                 for k in [
+                    "site_name",
+                    "hero_image_url",
+                    "hero_image_alt",
                     "featured_youtube_url",
                     "smtp_host",
                     "smtp_port",
@@ -223,7 +227,15 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                     "smtp_from",
                     "smtp_to",
                 ]:
-                    conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES (:k, NULL)"), {"k": k})
+                    if k == "site_name":
+                        conn.execute(
+                            text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('site_name', 'Vlog Travel Finder')")
+                        )
+                    else:
+                        conn.execute(
+                            text("INSERT OR IGNORE INTO site_setting (key, value) VALUES (:k, NULL)"),
+                            {"k": k},
+                        )
 
                 version = 4
                 _set_user_version(conn, version)
@@ -283,3 +295,10 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 continue
 
             raise RuntimeError(f"Unsupported schema version: {version}")
+
+        conn.execute(
+            text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('site_name', 'Vlog Travel Finder')")
+        )
+
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_url', NULL)"))
+        conn.execute(text("INSERT OR IGNORE INTO site_setting (key, value) VALUES ('hero_image_alt', NULL)"))

@@ -20,6 +20,8 @@ public_bp = Blueprint("public", __name__)
 def home() -> str:
     db = get_session(current_app)
     featured_youtube_url = get_setting(db, "featured_youtube_url")
+    hero_image_url = get_setting(db, "hero_image_url")
+    hero_image_alt = get_setting(db, "hero_image_alt")
 
     posts = (
         db.execute(
@@ -38,6 +40,8 @@ def home() -> str:
     return render_template(
         "public/home.html",
         featured_youtube_url=featured_youtube_url,
+        hero_image_url=hero_image_url,
+        hero_image_alt=hero_image_alt,
         posts=posts,
     )
 

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Search - Vlog Travel Finder{% endblock %}
+{% block title %}Search - {{ site_name }}{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3 mb-3">
+  <div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3 mb-3" data-aos="fade-up">
     <div>
       <h1 class="mb-1">Find places for your next trip</h1>
       <div class="text-muted">Search restaurants, breweries, museums, festivals, and more.</div>
     </div>
   </div>
 
-  <div class="card shadow-sm mb-4">
+  <div class="card shadow-sm mb-4" data-aos="fade-up" data-aos-delay="50">
     <div class="card-body">
       <form method="get" action="{{ url_for('public.places') }}" class="row g-3">
         <div class="col-12 col-lg-4">

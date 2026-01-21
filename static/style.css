@@ -1,11 +1,73 @@
 /* Bootstrap-friendly minimal overrides */
 
+:root {
+  --brand-1: #2f5dff;
+  --brand-2: #12b3a8;
+}
+
 body {
-  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 65%);
+  background: radial-gradient(1200px 500px at 15% 0%, rgba(47, 93, 255, 0.10), transparent 60%),
+    radial-gradient(900px 420px at 85% 10%, rgba(18, 179, 168, 0.10), transparent 60%),
+    linear-gradient(180deg, #f8f9fa 0%, #ffffff 70%);
 }
 
 .navbar-brand {
   letter-spacing: 0.2px;
+}
+
+.card {
+  border-radius: 0.9rem;
+}
+
+.hero-card {
+  background: linear-gradient(135deg, rgba(47, 93, 255, 0.12), rgba(18, 179, 168, 0.12));
+  border: 1px solid rgba(13, 110, 253, 0.15);
+}
+
+.hero-card .hero-lead {
+  color: rgba(33, 37, 41, 0.8);
+}
+
+.btn-primary {
+  box-shadow: 0 0.5rem 1rem rgba(47, 93, 255, 0.18);
+}
+
+.hero-image-wrap {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.hero-image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  display: block;
+}
+
+.card.shadow-sm {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card.shadow-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4 {
+  margin-top: 1.25rem;
+}
+
+.blog-content p {
+  color: rgba(33, 37, 41, 0.9);
+  line-height: 1.7;
 }
 
 /* Keep long notes readable */
