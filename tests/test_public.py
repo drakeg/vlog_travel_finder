@@ -26,6 +26,8 @@ def test_home_renders_latest_video_when_channel_configured(client, app, monkeypa
         set_setting(db, "youtube_channel", "UC1234567890abcdef")
         db.commit()
 
+    monkeypatch.setattr("vlog_site.services.youtube_service._CACHE", {})
+
     monkeypatch.setattr("vlog_site.services.youtube_service._fetch_rss", lambda channel_id: rss)
 
     resp = client.get("/")
@@ -34,7 +36,38 @@ def test_home_renders_latest_video_when_channel_configured(client, app, monkeypa
     assert "Latest video" in body
     assert "My Latest Upload" in body
     assert "https://www.youtube.com/watch?v=abc123" in body
-    assert "https://www.youtube.com/embed/abc123" in body
+    assert "https://www.youtube-nocookie.com/embed/abc123" in body
+
+
+def test_home_normalizes_featured_youtube_url_to_nocookie_embed(client, app):
+    with app.app_context():
+        db = get_session(app)
+        set_setting(db, "featured_youtube_url", "https://www.youtube.com/watch?v=abc123")
+        db.commit()
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "https://www.youtube-nocookie.com/embed/abc123" in body
+
+
+def test_home_latest_video_fallback_when_rss_blocked(client, app, monkeypatch):
+    with app.app_context():
+        db = get_session(app)
+        set_setting(db, "youtube_channel", "UC1234567890abcdef")
+        db.commit()
+
+    def _boom(channel_id: str) -> str:
+        raise RuntimeError("blocked")
+
+    monkeypatch.setattr("vlog_site.services.youtube_service._CACHE", {})
+    monkeypatch.setattr("vlog_site.services.youtube_service._fetch_rss", _boom)
+
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Latest video unavailable" in body
+    assert "https://www.youtube.com/channel/UC1234567890abcdef" in body
 
 
 def test_page_view_logged_for_public_pages(client, app):

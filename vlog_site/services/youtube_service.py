@@ -4,7 +4,7 @@ import time
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ class LatestVideo:
 
     @property
     def embed_url(self) -> str:
-        return f"https://www.youtube.com/embed/{self.video_id}"
+        return f"https://www.youtube-nocookie.com/embed/{self.video_id}"
 
 
 _CACHE: dict[str, tuple[float, LatestVideo | None]] = {}
@@ -51,6 +51,74 @@ def _extract_channel_id(channel_value: str | None) -> str | None:
     # Expect /channel/<UC...>
     if len(parts) >= 2 and parts[0] == "channel" and parts[1].startswith("UC"):
         return parts[1]
+
+    return None
+
+
+def get_channel_url(*, db: Session) -> str | None:
+    raw = (get_setting(db, "youtube_channel") or "").strip()
+    if not raw:
+        return None
+
+    channel_id = _extract_channel_id(raw)
+    if channel_id:
+        return f"https://www.youtube.com/channel/{channel_id}"
+
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        return None
+
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return raw
+
+    return None
+
+
+def normalize_featured_embed_url(featured_youtube_url: str | None) -> str | None:
+    raw = (featured_youtube_url or "").strip()
+    if not raw:
+        return None
+
+    # Already an embed url
+    if "/embed/" in raw:
+        try:
+            parsed = urlparse(raw)
+            parts = [p for p in (parsed.path or "").split("/") if p]
+            if "embed" in parts:
+                idx = parts.index("embed")
+                if idx + 1 < len(parts):
+                    vid = parts[idx + 1]
+                    return f"https://www.youtube-nocookie.com/embed/{vid}"
+        except Exception:
+            return None
+
+    # youtu.be/<id>
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        parsed = None
+
+    if parsed and parsed.netloc.endswith("youtu.be"):
+        vid = (parsed.path or "").strip("/")
+        if vid:
+            return f"https://www.youtube-nocookie.com/embed/{vid}"
+
+    # youtube.com/watch?v=<id>
+    if parsed and "youtube" in parsed.netloc:
+        qs = parse_qs(parsed.query or "")
+        if "v" in qs and qs["v"]:
+            vid = qs["v"][0]
+            return f"https://www.youtube-nocookie.com/embed/{vid}"
+
+        # youtube.com/shorts/<id>
+        parts = [p for p in (parsed.path or "").split("/") if p]
+        if len(parts) >= 2 and parts[0] == "shorts":
+            return f"https://www.youtube-nocookie.com/embed/{parts[1]}"
+
+    # If user pasted a bare ID, accept it.
+    if " " not in raw and "/" not in raw and len(raw) >= 6:
+        return f"https://www.youtube-nocookie.com/embed/{raw}"
 
     return None
 
