@@ -33,14 +33,27 @@
           {% endif %}
           {% if featured_youtube_url %}
             <div class="col-12 col-lg-5">
-              <div class="ratio ratio-16x9 rounded overflow-hidden">
-                <iframe
-                  src="{{ featured_youtube_url }}"
-                  title="Featured video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen
-                ></iframe>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <h2 class="h6 mb-0">Featured video</h2>
               </div>
+              <div class="ratio ratio-16x9 rounded overflow-hidden bg-body-secondary" id="featuredVideo" data-embed-url="{{ featured_youtube_url }}">
+                {% if featured_thumbnail_url %}
+                  <img src="{{ featured_thumbnail_url }}" alt="Featured video" class="w-100 h-100 object-fit-cover" loading="lazy" />
+                {% else %}
+                  <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted">Featured video</div>
+                {% endif %}
+                <button type="button" class="btn btn-dark position-absolute top-50 start-50 translate-middle" style="z-index: 3;" onclick="vlogLoadEmbed('featuredVideo')">
+                  <i class="fa-solid fa-play me-1"></i>Play here
+                </button>
+              </div>
+              {% if featured_video_url %}
+                <div class="mt-2">
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ featured_video_url }}" target="_blank" rel="noopener noreferrer">
+                    Watch on YouTube
+                    <i class="fa-solid fa-arrow-right ms-1"></i>
+                  </a>
+                </div>
+              {% endif %}
             </div>
           {% endif %}
         </div>
@@ -96,13 +109,11 @@
             </div>
 
             {% if latest_video %}
-              <div class="ratio ratio-16x9 rounded overflow-hidden mb-2">
-                <iframe
-                  src="{{ latest_video.embed_url }}"
-                  title="{{ latest_video.title }}"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen
-                ></iframe>
+              <div class="ratio ratio-16x9 rounded overflow-hidden mb-2 bg-body-secondary" id="latestVideo" data-embed-url="{{ latest_video.embed_url }}">
+                <img src="{{ latest_video.thumbnail_url }}" alt="{{ latest_video.title }}" class="w-100 h-100 object-fit-cover" loading="lazy" />
+                <button type="button" class="btn btn-dark position-absolute top-50 start-50 translate-middle" style="z-index: 3;" onclick="vlogLoadEmbed('latestVideo')">
+                  <i class="fa-solid fa-play me-1"></i>Play here
+                </button>
               </div>
 
               <div class="fw-semibold">{{ latest_video.title }}</div>
@@ -116,4 +127,20 @@
       </div>
     {% endif %}
   </div>
+
+  <script>
+    function vlogLoadEmbed(containerId) {
+      var el = document.getElementById(containerId);
+      if (!el) return;
+      var src = el.getAttribute('data-embed-url');
+      if (!src) return;
+      if (src.indexOf('autoplay=1') === -1) {
+        src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'autoplay=1';
+      }
+      el.innerHTML =
+        '<iframe src="' +
+        src +
+        '" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+    }
+  </script>
 {% endblock %}

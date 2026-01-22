@@ -37,6 +37,7 @@ def test_home_renders_latest_video_when_channel_configured(client, app, monkeypa
     assert "My Latest Upload" in body
     assert "https://www.youtube.com/watch?v=abc123" in body
     assert "https://www.youtube-nocookie.com/embed/abc123" in body
+    assert "https://i.ytimg.com/vi/abc123/hqdefault.jpg" in body
 
 
 def test_home_normalizes_featured_youtube_url_to_nocookie_embed(client, app):
@@ -48,7 +49,9 @@ def test_home_normalizes_featured_youtube_url_to_nocookie_embed(client, app):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
-    assert "https://www.youtube-nocookie.com/embed/abc123" in body
+    assert "data-embed-url=\"https://www.youtube-nocookie.com/embed/abc123\"" in body
+    assert "https://i.ytimg.com/vi/abc123/hqdefault.jpg" in body
+    assert "https://www.youtube.com/watch?v=abc123" in body
 
 
 def test_home_latest_video_fallback_when_rss_blocked(client, app, monkeypatch):

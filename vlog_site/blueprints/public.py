@@ -30,6 +30,14 @@ def uploaded_file(filename: str):
 def home() -> str:
     db = get_session(current_app)
     featured_youtube_url = normalize_featured_embed_url(get_setting(db, "featured_youtube_url"))
+    featured_video_id = None
+    featured_video_url = None
+    featured_thumbnail_url = None
+    if featured_youtube_url and "/embed/" in featured_youtube_url:
+        featured_video_id = featured_youtube_url.split("/embed/", 1)[1].split("?", 1)[0].split("&", 1)[0].strip("/")
+        if featured_video_id:
+            featured_video_url = f"https://www.youtube.com/watch?v={featured_video_id}"
+            featured_thumbnail_url = f"https://i.ytimg.com/vi/{featured_video_id}/hqdefault.jpg"
     latest_video = get_latest_video(db=db)
     youtube_channel_url = get_channel_url(db=db)
     hero_image_filename = get_setting(db, "hero_image_filename")
@@ -57,6 +65,9 @@ def home() -> str:
     return render_template(
         "public/home.html",
         featured_youtube_url=featured_youtube_url,
+        featured_video_id=featured_video_id,
+        featured_video_url=featured_video_url,
+        featured_thumbnail_url=featured_thumbnail_url,
         latest_video=latest_video,
         youtube_channel_url=youtube_channel_url,
         hero_image_url=hero_image_url,
