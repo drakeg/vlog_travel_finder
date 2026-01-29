@@ -246,7 +246,7 @@ webdriver-manager==3.8.6
 webencodings==0.5.1
 websocket-client==1.5.1
 websockets==11.0.2
-Werkzeug==3.0.2
+Werkzeug==3.1.5
 wsproto==1.2.0
 WTForms==3.2.1
 xattr==0.10.1
