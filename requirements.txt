@@ -239,7 +239,7 @@ typing_extensions==4.11.0
 tzlocal==5.2
 uritemplate==4.1.1
 uritools==4.0.2
-urllib3==1.26.15
+urllib3==2.6.3
 virtualenv==20.24.7
 wasabi==0.10.1
 webdriver-manager==3.8.6
