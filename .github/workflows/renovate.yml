@@ -41,5 +41,5 @@ jobs:
         env:
           RENOVATE_PLATFORM: gitea
           RENOVATE_ENDPOINT: https://gitea.srv778848.hstgr.cloud/
-          RENOVATE_REPOSITORIES: ${{ secrets.RENOVATE_GITEA_REPOSITORIES }}
+          RENOVATE_REPOSITORIES: drakeg/vlog_travel_finder
           LOG_LEVEL: info
