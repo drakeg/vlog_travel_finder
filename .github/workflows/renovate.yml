@@ -1,0 +1,45 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  renovate_github:
+    name: Renovate (GitHub)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@v41.0.13
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_GITHUB_TOKEN }}
+        env:
+          RENOVATE_PLATFORM: github
+          LOG_LEVEL: info
+
+  renovate_gitea:
+    name: Renovate (Gitea)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@v41.0.13
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_GITEA_TOKEN }}
+        env:
+          RENOVATE_PLATFORM: gitea
+          RENOVATE_ENDPOINT: https://gitea.srv778848.hstgr.cloud/
+          RENOVATE_REPOSITORIES: ${{ secrets.RENOVATE_GITEA_REPOSITORIES }}
+          LOG_LEVEL: info
