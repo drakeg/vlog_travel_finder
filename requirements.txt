@@ -141,7 +141,7 @@ poetry-plugin-export==1.6.0
 pre-commit==3.2.2
 preshed==3.0.8
 proto-plus==1.23.0
-protobuf==4.22.1
+protobuf==4.25.8
 ptyprocess==0.7.0
 py-cpuinfo==9.0.0
 pyasn1==0.4.8
