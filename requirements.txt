@@ -53,7 +53,7 @@ filelock==3.13.1
 flake8==6.0.0
 Flask==3.0.3
 Flask-Admin==1.6.1
-Flask-Cors==4.0.0
+Flask-Cors==6.0.0
 Flask-Login==0.6.3
 Flask-SocketIO==5.3.6
 Flask-SQLAlchemy==3.1.1
