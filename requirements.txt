@@ -49,7 +49,7 @@ eventlet==0.36.1
 exceptiongroup==1.1.1
 fastjsonschema==2.19.0
 fastlogging==1.0.0
-filelock==3.13.1
+filelock==3.20.3
 flake8==6.0.0
 Flask==3.0.3
 Flask-Admin==1.6.1
