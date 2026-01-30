@@ -229,7 +229,7 @@ toml==0.10.2
 tomlkit==0.12.3
 torch==2.2.2
 tqdm==4.66.2
-transformers==4.39.3
+transformers==4.53.0
 trio==0.22.0
 trio-websocket==0.10.2
 trove-classifiers==2023.11.22
