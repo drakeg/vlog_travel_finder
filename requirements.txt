@@ -158,7 +158,7 @@ pyHanko==0.23.2
 pyhanko-certvalidator==0.26.3
 PyOgg==0.6.14a1
 pyparsing==3.0.9
-pypdf==6.6.0
+pypdf==6.6.2
 pypng==0.20220715.0
 pyproject_hooks==1.0.0
 PyQt5==5.15.9
