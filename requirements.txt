@@ -227,7 +227,7 @@ tinycss2==1.2.1
 tokenizers==0.15.2
 toml==0.10.2
 tomlkit==0.12.3
-torch==2.2.2
+torch==2.8.0
 tqdm==4.66.2
 transformers==4.39.3
 trio==0.22.0
