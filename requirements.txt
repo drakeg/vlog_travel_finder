@@ -240,7 +240,7 @@ tzlocal==5.2
 uritemplate==4.1.1
 uritools==4.0.2
 urllib3==2.6.3
-virtualenv==20.24.7
+virtualenv==20.36.1
 wasabi==0.10.1
 webdriver-manager==3.8.6
 webencodings==0.5.1
