@@ -26,12 +26,17 @@
         "pip_requirements"
       ],
       "matchUpdateTypes": [
-        "major"
+        "digest",
+        "major",
+        "minor",
+        "patch",
+        "pin"
       ],
       "labels": [
         "dependencies",
         "major"
-      ]
+      ],
+      "automerge": true
     }
   ]
 }
