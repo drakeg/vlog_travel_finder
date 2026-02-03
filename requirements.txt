@@ -2,7 +2,7 @@ bidict==0.23.1
 blinker==1.9.0
 click==8.3.1
 Flask==3.1.2
-Flask-Admin==1.6.1
+Flask-Admin==2.0.2
 flask-cors==6.0.2
 Flask-Login==0.6.3
 Flask-SocketIO==5.6.0
@@ -15,7 +15,7 @@ Markdown==3.10.1
 MarkupSafe==3.0.3
 packaging==26.0
 pluggy==1.6.0
-pytest==7.4.4
+pytest==9.0.2
 python-engineio==4.13.0
 python-socketio==5.16.0
 simple-websocket==1.1.0
