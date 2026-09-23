@@ -13,7 +13,7 @@
   <div class="card shadow-sm mb-4" data-aos="fade-up" data-aos-delay="50">
     <div class="card-body">
       <form method="get" action="{{ url_for('public.places') }}" class="row g-3">
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-3">
           <label for="q" class="form-label">Search</label>
           <div class="input-group">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
@@ -31,13 +31,22 @@
           <input class="form-control" id="state" name="state" value="{{ state }}" placeholder="TX" />
         </div>
 
-        <div class="col-12 col-lg-2">
+        <div class="col-12 col-md-6 col-lg-2">
           <label for="category_id" class="form-label">Category</label>
           <select class="form-select" id="category_id" name="category_id">
             <option value="">Any</option>
             {% for c in categories %}
               <option value="{{ c.id }}" {% if category_id and (c.id|string) == (category_id|string) %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-2">
+          <label for="vlog_status" class="form-label">Vlog status</label>
+          <select class="form-select" id="vlog_status" name="vlog_status">
+            <option value="">Any</option>
+            <option value="featured" {% if vlog_status == "featured" %}selected{% endif %}>Featured in our vlog</option>
+            <option value="planned" {% if vlog_status == "planned" %}selected{% endif %}>Not featured yet</option>
           </select>
         </div>
 
