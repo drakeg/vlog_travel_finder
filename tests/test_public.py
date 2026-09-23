@@ -1,6 +1,6 @@
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
-from vlog_site.models import PageView
+from vlog_site.models import PageView, Place
 from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
@@ -273,3 +273,44 @@ def test_place_map_link_falls_back_to_address(client, app, seeded_content):
     body = resp.get_data(as_text=True)
     assert "Open in Google Maps" in body
     assert "query=123+Main+St%2C+Testville%2C+TS%2C+12345" in body
+
+
+def test_places_filter_featured_in_vlog(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        featured = Place(
+            name="Featured Brewery",
+            city="Testville",
+            state="TS",
+            vlog_youtube_url="https://www.youtube.com/watch?v=featured",
+        )
+        db.add(featured)
+        db.commit()
+
+    resp = client.get("/places?vlog_status=featured")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Featured Brewery" in body
+    assert "Test Place" not in body
+    assert 'option value="featured" selected' in body
+
+
+def test_places_filter_not_featured_yet(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        db.add(
+            Place(
+                name="Featured Brewery",
+                city="Testville",
+                state="TS",
+                vlog_tiktok_url="https://www.tiktok.com/@example/video/1",
+            )
+        )
+        db.commit()
+
+    resp = client.get("/places?vlog_status=planned")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Test Place" in body
+    assert "Featured Brewery" not in body
+    assert 'option value="planned" selected' in body
