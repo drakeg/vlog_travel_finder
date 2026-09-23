@@ -236,3 +236,40 @@ def test_contact_creates_message(client):
         follow_redirects=True,
     )
     assert resp.status_code == 200
+
+
+def test_place_map_link_prefers_coordinates(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        place = seeded_content["place"]
+        place.latitude = 42.1234
+        place.longitude = -76.5678
+        place.address = "123 Main St"
+        place.zipcode = "12345"
+        db.commit()
+        place_id = place.id
+
+    resp = client.get(f"/places/{place_id}")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Open in Google Maps" in body
+    assert "query=42.1234%2C-76.5678" in body
+
+
+def test_place_map_link_falls_back_to_address(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        place = seeded_content["place"]
+        place.address = "123 Main St"
+        place.city = "Testville"
+        place.state = "TS"
+        place.zipcode = "12345"
+        place.latitude = None
+        place.longitude = None
+        db.commit()
+
+    resp = client.get("/places")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Open in Google Maps" in body
+    assert "query=123+Main+St%2C+Testville%2C+TS%2C+12345" in body

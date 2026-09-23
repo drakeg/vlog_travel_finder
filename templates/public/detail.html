@@ -24,6 +24,11 @@
       {% if place.category_name %}
         <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis">{{ place.category_name }}</span>
       {% endif %}
+      {% if place.google_maps_url %}
+        <a class="btn btn-primary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">
+          <i class="fa-solid fa-map-location-dot me-1"></i>Open in Google Maps
+        </a>
+      {% endif %}
       <a class="btn btn-outline-secondary" href="{{ url_for('public.places') }}">
         <i class="fa-solid fa-arrow-left me-1"></i>Back
       </a>
