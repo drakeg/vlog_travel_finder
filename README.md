@@ -31,9 +31,13 @@ pip install -r requirements.txt
 
 ## Tests
 
+Run the same test command locally that CI uses:
+
 ```bash
-pytest
+python -m pytest -q
 ```
+
+GitHub Actions runs the test suite on pull requests and pushes to `main` using Python 3.12 and 3.13.
 
 ### 2) Initialize the database
 
