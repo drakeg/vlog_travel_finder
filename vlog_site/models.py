@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from urllib.parse import quote_plus
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -111,6 +112,19 @@ class Place(Base):
     @property
     def category_name(self) -> str | None:
         return self.category.name if self.category is not None else None
+
+    @property
+    def google_maps_url(self) -> str | None:
+        if self.latitude is not None and self.longitude is not None:
+            query = f"{self.latitude},{self.longitude}"
+        else:
+            parts = [self.address, self.city, self.state, self.zipcode]
+            query = ", ".join(part.strip() for part in parts if part and part.strip())
+
+        if not query:
+            return None
+
+        return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
 
 
 class SiteSetting(Base):
