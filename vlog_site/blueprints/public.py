@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
@@ -24,6 +25,18 @@ def _safe_local_next(value: str | None, fallback: str) -> str:
     if value and value.startswith("/") and not value.startswith("//"):
         return value
     return fallback
+
+
+def _clean_iso_date(value: str | None) -> str | None:
+    cleaned = clean_str(value)
+    if not cleaned:
+        return None
+    date.fromisoformat(cleaned)
+    return cleaned
+
+
+def _valid_trip_date_range(start_date: str | None, end_date: str | None) -> bool:
+    return not (start_date and end_date and end_date < start_date)
 
 
 @public_bp.route("/uploads/<path:filename>")
@@ -272,19 +285,30 @@ def trips() -> str:
 
     if request.method == "POST":
         name = clean_str(request.form.get("name"))
-        if not name:
-            flash("Trip name is required", "error")
+        try:
+            start_date = _clean_iso_date(request.form.get("start_date"))
+            end_date = _clean_iso_date(request.form.get("end_date"))
+        except ValueError:
+            start_date = end_date = None
+            flash("Trip dates must use a valid YYYY-MM-DD date", "error")
         else:
-            db.add(
-                Trip(
-                    user_id=user_id,
-                    name=name,
-                    notes=clean_str(request.form.get("notes")),
+            if not name:
+                flash("Trip name is required", "error")
+            elif not _valid_trip_date_range(start_date, end_date):
+                flash("Trip end date cannot be earlier than the start date", "error")
+            else:
+                db.add(
+                    Trip(
+                        user_id=user_id,
+                        name=name,
+                        notes=clean_str(request.form.get("notes")),
+                        start_date=start_date,
+                        end_date=end_date,
+                    )
                 )
-            )
-            db.commit()
-            flash("Trip created", "info")
-            return redirect(url_for("public.trips"))
+                db.commit()
+                flash("Trip created", "info")
+                return redirect(url_for("public.trips"))
 
     trips = (
         db.execute(
@@ -322,7 +346,11 @@ def trip_detail(trip_id: int) -> str:
         )
     ).all()
     stops = [
-        {"place": place, "position": trip_place.position}
+        {
+            "place": place,
+            "position": trip_place.position,
+            "notes": trip_place.notes,
+        }
         for place, trip_place in rows
     ]
     return render_template("public/trip_detail.html", trip=trip, stops=stops)
@@ -335,13 +363,23 @@ def trip_update(trip_id: int):
     trip = _current_user_trip_or_404(db, trip_id)
 
     name = clean_str(request.form.get("name"))
-    if not name:
-        flash("Trip name is required", "error")
+    try:
+        start_date = _clean_iso_date(request.form.get("start_date"))
+        end_date = _clean_iso_date(request.form.get("end_date"))
+    except ValueError:
+        flash("Trip dates must use a valid YYYY-MM-DD date", "error")
     else:
-        trip.name = name
-        trip.notes = clean_str(request.form.get("notes"))
-        db.commit()
-        flash("Trip details saved", "info")
+        if not name:
+            flash("Trip name is required", "error")
+        elif not _valid_trip_date_range(start_date, end_date):
+            flash("Trip end date cannot be earlier than the start date", "error")
+        else:
+            trip.name = name
+            trip.notes = clean_str(request.form.get("notes"))
+            trip.start_date = start_date
+            trip.end_date = end_date
+            db.commit()
+            flash("Trip details saved", "info")
 
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
@@ -425,6 +463,21 @@ def trip_move_place(trip_id: int, place_id: int, direction: str):
         current.position, target.position = target.position, current.position
         db.commit()
 
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/notes", methods=["POST"])
+@login_required
+def trip_update_place_notes(trip_id: int, place_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    row = db.get(TripPlace, (trip.id, place_id))
+    if row is None:
+        abort(404)
+
+    row.notes = clean_str(request.form.get("notes"))
+    db.commit()
+    flash("Stop notes saved", "info")
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
