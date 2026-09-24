@@ -1,6 +1,6 @@
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
-from vlog_site.models import PageView, Place, SavedPlace
+from vlog_site.models import PageView, Place, SavedPlace, Trip, TripPlace
 from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
@@ -453,3 +453,131 @@ def test_saved_place_redirect_rejects_external_next(client, seeded_content):
     )
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith(f"/places/{place_id}")
+
+
+def test_trips_require_login(client, seeded_content):
+    place_id = seeded_content["place"].id
+
+    resp = client.get("/trips")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+    resp = client.post(f"/trips/1/places/{place_id}/add")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+
+def test_member_can_create_trip_and_add_place_once(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "tripmember@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    resp = client.post(
+        "/trips",
+        data={"name": "Finger Lakes Weekend"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Finger Lakes Weekend" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Finger Lakes Weekend").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for _ in range(2):
+        resp = client.post(
+            f"/trips/{trip_id}/places/{place_id}/add",
+            data={"next": f"/trips/{trip_id}"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(TripPlace).filter_by(trip_id=trip_id, place_id=place_id).count() == 1
+
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "Test Place" in body
+
+    resp = client.post(
+        f"/trips/{trip_id}/places/{place_id}/remove",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Test Place" not in resp.get_data(as_text=True)
+
+
+def test_trip_ownership_is_enforced(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={
+            "email": "owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owner Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={
+            "email": "other@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    assert client.get(f"/trips/{trip_id}").status_code == 404
+    assert client.post(f"/trips/{trip_id}/places/{place_id}/add").status_code == 404
+    assert client.post(f"/trips/{trip_id}/delete").status_code == 404
+
+
+def test_trip_delete_removes_trip_and_membership(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "delete@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Delete Me"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Delete Me").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+    resp = client.post(f"/trips/{trip_id}/delete", follow_redirects=True)
+    assert resp.status_code == 200
+    assert "Delete Me" not in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(Trip, trip_id) is None
+        assert db.query(TripPlace).filter_by(trip_id=trip_id).count() == 0
