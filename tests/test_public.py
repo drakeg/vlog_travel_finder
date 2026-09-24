@@ -581,3 +581,169 @@ def test_trip_delete_removes_trip_and_membership(client, app, seeded_content):
         db = get_session(app)
         assert db.get(Trip, trip_id) is None
         assert db.query(TripPlace).filter_by(trip_id=trip_id).count() == 0
+
+
+def test_trip_notes_can_be_created_and_updated(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "notes@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    resp = client.post(
+        "/trips",
+        data={"name": "Notes Trip", "notes": "Initial notes"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Notes Trip").first()
+        assert trip is not None
+        assert trip.notes == "Initial notes"
+        trip_id = trip.id
+
+    resp = client.post(
+        f"/trips/{trip_id}/update",
+        data={"name": "Updated Notes Trip", "notes": "Campground at 3 PM"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "Updated Notes Trip" in body
+    assert "Campground at 3 PM" in body
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.get(Trip, trip_id)
+        assert trip is not None
+        assert trip.name == "Updated Notes Trip"
+        assert trip.notes == "Campground at 3 PM"
+
+
+def test_trip_stops_append_and_can_be_reordered(client, app, seeded_content):
+    first_place_id = seeded_content["place"].id
+
+    with app.app_context():
+        db = get_session(app)
+        second = Place(name="Second Stop", city="Second City", state="SS")
+        third = Place(name="Third Stop", city="Third City", state="TT")
+        db.add_all([second, third])
+        db.commit()
+        second_id = second.id
+        third_id = third.id
+
+    client.post(
+        "/register",
+        data={
+            "email": "ordering@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Ordered Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Ordered Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_place_id, second_id, third_id]:
+        resp = client.post(
+            f"/trips/{trip_id}/places/{place_id}/add",
+            data={"next": f"/trips/{trip_id}"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        rows = (
+            db.query(TripPlace)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripPlace.position.asc())
+            .all()
+        )
+        assert [row.place_id for row in rows] == [first_place_id, second_id, third_id]
+        assert [row.position for row in rows] == [1, 2, 3]
+
+    # Moving the first item up is a safe no-op.
+    resp = client.post(
+        f"/trips/{trip_id}/places/{first_place_id}/move/up",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    # Move the third item up once: first, third, second.
+    resp = client.post(
+        f"/trips/{trip_id}/places/{third_id}/move/up",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert body.index("Test Place") < body.index("Third Stop") < body.index("Second Stop")
+
+    with app.app_context():
+        db = get_session(app)
+        rows = (
+            db.query(TripPlace)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripPlace.position.asc())
+            .all()
+        )
+        assert [row.place_id for row in rows] == [first_place_id, third_id, second_id]
+
+
+def test_trip_update_and_move_enforce_ownership(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={
+            "email": "trip-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Ordered Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Ordered Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={
+            "email": "trip-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    assert (
+        client.post(
+            f"/trips/{trip_id}/update",
+            data={"name": "Hijacked", "notes": "Nope"},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/move/down"
+        ).status_code
+        == 404
+    )

@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 8
+        latest_version = 9
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -381,6 +381,51 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 )
 
                 version = 8
+                _set_user_version(conn, version)
+                continue
+
+            if version == 8:
+                trip_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip)"))
+                    if r[1] is not None
+                }
+                if "notes" not in trip_cols:
+                    conn.execute(text("ALTER TABLE trip ADD COLUMN notes TEXT NULL"))
+
+                trip_place_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip_place)"))
+                    if r[1] is not None
+                }
+                if "position" not in trip_place_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE trip_place ADD COLUMN position INTEGER NOT NULL DEFAULT 0"
+                        )
+                    )
+
+                conn.execute(
+                    text(
+                        """
+                        UPDATE trip_place
+                        SET position = (
+                            SELECT COUNT(*)
+                            FROM trip_place AS earlier
+                            WHERE earlier.trip_id = trip_place.trip_id
+                              AND (
+                                  earlier.created_at < trip_place.created_at
+                                  OR (
+                                      earlier.created_at = trip_place.created_at
+                                      AND earlier.place_id <= trip_place.place_id
+                                  )
+                              )
+                        )
+                        """
+                    )
+                )
+
+                version = 9
                 _set_user_version(conn, version)
                 continue
 

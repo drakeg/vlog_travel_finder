@@ -275,7 +275,13 @@ def trips() -> str:
         if not name:
             flash("Trip name is required", "error")
         else:
-            db.add(Trip(user_id=user_id, name=name))
+            db.add(
+                Trip(
+                    user_id=user_id,
+                    name=name,
+                    notes=clean_str(request.form.get("notes")),
+                )
+            )
             db.commit()
             flash("Trip created", "info")
             return redirect(url_for("public.trips"))
@@ -305,17 +311,39 @@ def trips() -> str:
 def trip_detail(trip_id: int) -> str:
     db = get_session(current_app)
     trip = _current_user_trip_or_404(db, trip_id)
-    places = (
-        db.execute(
-            select(Place)
-            .join(TripPlace, TripPlace.place_id == Place.id)
-            .where(TripPlace.trip_id == trip.id)
-            .order_by(TripPlace.created_at.asc(), Place.name.asc())
+    rows = db.execute(
+        select(Place, TripPlace)
+        .join(TripPlace, TripPlace.place_id == Place.id)
+        .where(TripPlace.trip_id == trip.id)
+        .order_by(
+            TripPlace.position.asc(),
+            TripPlace.created_at.asc(),
+            Place.name.asc(),
         )
-        .scalars()
-        .all()
-    )
-    return render_template("public/trip_detail.html", trip=trip, places=places)
+    ).all()
+    stops = [
+        {"place": place, "position": trip_place.position}
+        for place, trip_place in rows
+    ]
+    return render_template("public/trip_detail.html", trip=trip, stops=stops)
+
+
+@public_bp.route("/trips/<int:trip_id>/update", methods=["POST"])
+@login_required
+def trip_update(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+
+    name = clean_str(request.form.get("name"))
+    if not name:
+        flash("Trip name is required", "error")
+    else:
+        trip.name = name
+        trip.notes = clean_str(request.form.get("notes"))
+        db.commit()
+        flash("Trip details saved", "info")
+
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
 @public_bp.route("/trips/<int:trip_id>/delete", methods=["POST"])
@@ -338,7 +366,17 @@ def trip_add_place(trip_id: int, place_id: int):
         abort(404)
 
     if db.get(TripPlace, (trip.id, place_id)) is None:
-        db.add(TripPlace(trip_id=trip.id, place_id=place_id))
+        positions = db.execute(
+            select(TripPlace.position).where(TripPlace.trip_id == trip.id)
+        ).scalars().all()
+        next_position = max(positions, default=0) + 1
+        db.add(
+            TripPlace(
+                trip_id=trip.id,
+                place_id=place_id,
+                position=next_position,
+            )
+        )
         db.commit()
 
     next_url = _safe_local_next(
@@ -346,6 +384,48 @@ def trip_add_place(trip_id: int, place_id: int):
         url_for("public.trip_detail", trip_id=trip.id),
     )
     return redirect(next_url)
+
+
+@public_bp.route(
+    "/trips/<int:trip_id>/places/<int:place_id>/move/<direction>",
+    methods=["POST"],
+)
+@login_required
+def trip_move_place(trip_id: int, place_id: int, direction: str):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    if direction not in {"up", "down"}:
+        abort(404)
+
+    rows = (
+        db.execute(
+            select(TripPlace)
+            .where(TripPlace.trip_id == trip.id)
+            .order_by(
+                TripPlace.position.asc(),
+                TripPlace.created_at.asc(),
+                TripPlace.place_id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    current_index = next(
+        (index for index, row in enumerate(rows) if row.place_id == place_id),
+        None,
+    )
+    if current_index is None:
+        abort(404)
+
+    target_index = current_index - 1 if direction == "up" else current_index + 1
+    if 0 <= target_index < len(rows):
+        current = rows[current_index]
+        target = rows[target_index]
+        current.position, target.position = target.position, current.position
+        db.commit()
+
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
 @public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/remove", methods=["POST"])
