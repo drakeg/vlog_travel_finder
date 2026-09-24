@@ -20,6 +20,12 @@ from ..utils import clean_str
 public_bp = Blueprint("public", __name__)
 
 
+def _safe_local_next(value: str | None, fallback: str) -> str:
+    if value and value.startswith("/") and not value.startswith("//"):
+        return value
+    return fallback
+
+
 @public_bp.route("/uploads/<path:filename>")
 def uploaded_file(filename: str):
     upload_dir = os.path.join(current_app.instance_path, "uploads")
@@ -206,7 +212,10 @@ def save_place(place_id: int):
         db.add(SavedPlace(user_id=user_id, place_id=place_id))
         db.commit()
 
-    next_url = request.form.get("next") or url_for("public.place_detail", place_id=place_id)
+    next_url = _safe_local_next(
+        request.form.get("next"),
+        url_for("public.place_detail", place_id=place_id),
+    )
     return redirect(next_url)
 
 
@@ -220,7 +229,7 @@ def unsave_place(place_id: int):
         db.delete(saved)
         db.commit()
 
-    next_url = request.form.get("next") or url_for("public.saved_places")
+    next_url = _safe_local_next(request.form.get("next"), url_for("public.saved_places"))
     return redirect(next_url)
 
 
