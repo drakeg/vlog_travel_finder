@@ -295,6 +295,46 @@ def _current_user_trip_or_404(db, trip_id: int) -> Trip:
     return trip
 
 
+def _trip_itinerary_data(db, trip: Trip) -> tuple[list[dict], list[dict], list[dict]]:
+    rows = db.execute(
+        select(Place, TripPlace)
+        .join(TripPlace, TripPlace.place_id == Place.id)
+        .where(TripPlace.trip_id == trip.id)
+        .order_by(
+            TripPlace.position.asc(),
+            TripPlace.created_at.asc(),
+            Place.name.asc(),
+        )
+    ).all()
+
+    stops = [
+        {
+            "place": place,
+            "position": trip_place.position,
+            "notes": trip_place.notes,
+            "planned_date": trip_place.planned_date,
+            "planned_time": trip_place.planned_time,
+            "sequence": index,
+        }
+        for index, (place, trip_place) in enumerate(rows, start=1)
+    ]
+
+    scheduled_by_date: dict[str, list[dict]] = {}
+    unscheduled_stops: list[dict] = []
+    for stop in stops:
+        planned_date = stop["planned_date"]
+        if planned_date:
+            scheduled_by_date.setdefault(planned_date, []).append(stop)
+        else:
+            unscheduled_stops.append(stop)
+
+    day_groups = [
+        {"date": planned_date, "stops": scheduled_by_date[planned_date]}
+        for planned_date in sorted(scheduled_by_date)
+    ]
+    return stops, day_groups, unscheduled_stops
+
+
 @public_bp.route("/trips", methods=["GET", "POST"])
 @login_required
 def trips() -> str:
@@ -353,41 +393,7 @@ def trips() -> str:
 def trip_detail(trip_id: int) -> str:
     db = get_session(current_app)
     trip = _current_user_trip_or_404(db, trip_id)
-    rows = db.execute(
-        select(Place, TripPlace)
-        .join(TripPlace, TripPlace.place_id == Place.id)
-        .where(TripPlace.trip_id == trip.id)
-        .order_by(
-            TripPlace.position.asc(),
-            TripPlace.created_at.asc(),
-            Place.name.asc(),
-        )
-    ).all()
-    stops = [
-        {
-            "place": place,
-            "position": trip_place.position,
-            "notes": trip_place.notes,
-            "planned_date": trip_place.planned_date,
-            "planned_time": trip_place.planned_time,
-            "sequence": index,
-        }
-        for index, (place, trip_place) in enumerate(rows, start=1)
-    ]
-
-    scheduled_by_date: dict[str, list[dict]] = {}
-    unscheduled_stops: list[dict] = []
-    for stop in stops:
-        planned_date = stop["planned_date"]
-        if planned_date:
-            scheduled_by_date.setdefault(planned_date, []).append(stop)
-        else:
-            unscheduled_stops.append(stop)
-
-    day_groups = [
-        {"date": planned_date, "stops": scheduled_by_date[planned_date]}
-        for planned_date in sorted(scheduled_by_date)
-    ]
+    stops, day_groups, unscheduled_stops = _trip_itinerary_data(db, trip)
 
     return render_template(
         "public/trip_detail.html",
@@ -396,6 +402,79 @@ def trip_detail(trip_id: int) -> str:
         day_groups=day_groups,
         unscheduled_stops=unscheduled_stops,
     )
+
+
+@public_bp.route("/trips/<int:trip_id>/print")
+@login_required
+def trip_print(trip_id: int) -> str:
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    stops, day_groups, unscheduled_stops = _trip_itinerary_data(db, trip)
+    return render_template(
+        "public/trip_print.html",
+        trip=trip,
+        stops=stops,
+        day_groups=day_groups,
+        unscheduled_stops=unscheduled_stops,
+    )
+
+
+@public_bp.route("/trips/<int:trip_id>/itinerary.txt")
+@login_required
+def trip_text_export(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    stops, day_groups, unscheduled_stops = _trip_itinerary_data(db, trip)
+
+    lines = [trip.name]
+    if trip.start_date or trip.end_date:
+        lines.append(
+            f"Dates: {trip.start_date or 'TBD'} - {trip.end_date or 'TBD'}"
+        )
+    if trip.notes:
+        lines.extend(["", f"Trip notes: {trip.notes}"])
+
+    def add_stop(stop: dict) -> None:
+        place = stop["place"]
+        when = ""
+        if stop["planned_time"]:
+            when = f" @ {stop['planned_time']}"
+        lines.append(f"{stop['sequence']}. {place.name}{when}")
+        address_parts = [
+            place.address,
+            place.city,
+            place.state,
+            place.zipcode,
+        ]
+        address = ", ".join(
+            part.strip() for part in address_parts if part and part.strip()
+        )
+        if address:
+            lines.append(f"   Address: {address}")
+        if stop["notes"]:
+            lines.append(f"   Notes: {stop['notes']}")
+        if place.google_maps_url:
+            lines.append(f"   Maps: {place.google_maps_url}")
+
+    for day in day_groups:
+        lines.extend(["", day["date"]])
+        for stop in day["stops"]:
+            add_stop(stop)
+
+    if unscheduled_stops:
+        lines.extend(["", "Unscheduled"])
+        for stop in unscheduled_stops:
+            add_stop(stop)
+
+    if not stops:
+        lines.extend(["", "No itinerary stops yet."])
+
+    content = "\n".join(lines) + "\n"
+    response = current_app.response_class(content, mimetype="text/plain")
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="trip-{trip.id}-itinerary.txt"'
+    )
+    return response
 
 
 @public_bp.route("/trips/<int:trip_id>/update", methods=["POST"])

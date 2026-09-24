@@ -1129,3 +1129,138 @@ def test_empty_trip_shows_itinerary_empty_state(client, app):
     body = resp.get_data(as_text=True)
     assert "No itinerary stops yet" in body
     assert "Add places to this trip to start building the itinerary." in body
+
+
+def test_itinerary_exports_require_login(client):
+    assert client.get("/trips/1/print").status_code == 302
+    assert client.get("/trips/1/itinerary.txt").status_code == 302
+
+
+def test_itinerary_exports_include_trip_and_stop_details(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "export@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Export Trip",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-12",
+            "notes": "Trip-level notes",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Export Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{trip_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-10-11", "planned_time": "13:30"},
+    )
+    client.post(
+        f"/trips/{trip_id}/places/{place_id}/notes",
+        data={"notes": "Stop-level notes"},
+    )
+
+    print_resp = client.get(f"/trips/{trip_id}/print")
+    assert print_resp.status_code == 200
+    print_body = print_resp.get_data(as_text=True)
+    assert "Export Trip" in print_body
+    assert "2026-10-10" in print_body
+    assert "2026-10-12" in print_body
+    assert "Trip-level notes" in print_body
+    assert "2026-10-11" in print_body
+    assert "13:30" in print_body
+    assert "Stop-level notes" in print_body
+    assert "Test Place" in print_body
+    assert f"/trips/{trip_id}/update" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/schedule" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/notes" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/remove" not in print_body
+
+    text_resp = client.get(f"/trips/{trip_id}/itinerary.txt")
+    assert text_resp.status_code == 200
+    assert text_resp.mimetype == "text/plain"
+    assert (
+        text_resp.headers["Content-Disposition"]
+        == f'attachment; filename="trip-{trip_id}-itinerary.txt"'
+    )
+    text_body = text_resp.get_data(as_text=True)
+    assert "Export Trip" in text_body
+    assert "Dates: 2026-10-10 - 2026-10-12" in text_body
+    assert "Trip notes: Trip-level notes" in text_body
+    assert "2026-10-11" in text_body
+    assert "1. Test Place @ 13:30" in text_body
+    assert "Notes: Stop-level notes" in text_body
+    assert "Maps:" in text_body
+
+
+def test_itinerary_exports_enforce_trip_ownership(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "export-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Export"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Export").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "export-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    assert client.get(f"/trips/{trip_id}/print").status_code == 404
+    assert client.get(f"/trips/{trip_id}/itinerary.txt").status_code == 404
+
+
+def test_empty_trip_exports_have_clear_content(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "empty-export@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Empty Export"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Empty Export").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    assert "No itinerary stops yet." in client.get(
+        f"/trips/{trip_id}/print"
+    ).get_data(as_text=True)
+    assert "No itinerary stops yet." in client.get(
+        f"/trips/{trip_id}/itinerary.txt"
+    ).get_data(as_text=True)

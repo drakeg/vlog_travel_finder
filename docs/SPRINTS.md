@@ -181,22 +181,47 @@ Deferred:
 
 ### Sprint 4 — Day-by-day itinerary view
 
-Status: In progress
+Status: Complete
 
 Planning issue: #119
 
-Current work:
+Shipped:
 
-- #120 — group scheduled stops under their planned dates;
-- sort day sections chronologically;
-- preserve manual stop order within each day;
-- keep unscheduled stops in a separate section;
-- retain all existing stop controls and empty-state behavior.
+- chronological day grouping for scheduled stops;
+- manual stop order preserved within each day;
+- a separate unscheduled section;
+- overall stop sequence numbering retained;
+- existing stop controls preserved;
+- improved empty itinerary behavior;
+- regression coverage for grouping, ordering, controls, unscheduled stops, and empty states.
 
-Out of scope for Sprint 4:
+Deferred:
 
 - automatic route optimization;
 - travel-time calculations;
 - calendar synchronization;
+- shared or collaborative trips;
+- paid external services.
+
+### Sprint 5 — Printable itinerary export
+
+Status: In progress
+
+Planning issue: #122
+
+Current work:
+
+- #123 — add a print-friendly itinerary view;
+- add a downloadable plain-text itinerary;
+- include trip dates/notes and stop schedule/notes/location details;
+- keep exports ownership-scoped;
+- keep editing controls out of the print view;
+- cover auth, ownership, representative content, and empty trips.
+
+Out of scope for Sprint 5:
+
+- PDF generation;
+- calendar synchronization;
+- route optimization;
 - shared or collaborative trips;
 - paid external services.

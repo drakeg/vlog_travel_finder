@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} - Printable Itinerary{% endblock %}
+
+{% block content %}
+  <div class="d-print-none d-flex justify-content-between align-items-center mb-4">
+    <a class="btn btn-outline-secondary" href="{{ url_for('public.trip_detail', trip_id=trip.id) }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to trip
+    </a>
+    <button class="btn btn-primary" type="button" onclick="window.print()">
+      <i class="fa-solid fa-print me-1"></i>Print
+    </button>
+  </div>
+
+  <header class="mb-4">
+    <h1 class="mb-1">{{ trip.name }}</h1>
+    {% if trip.start_date or trip.end_date %}
+      <div class="text-muted">
+        {{ trip.start_date or "TBD" }} – {{ trip.end_date or "TBD" }}
+      </div>
+    {% endif %}
+    {% if trip.notes %}
+      <p class="mt-3 mb-0">{{ trip.notes }}</p>
+    {% endif %}
+  </header>
+
+  {% macro print_stop(stop) %}
+    {% set place = stop.place %}
+    <div class="mb-3 pb-3 border-bottom">
+      <div class="fw-semibold">{{ stop.sequence }}. {{ place.name }}{% if stop.planned_time %} — {{ stop.planned_time }}{% endif %}</div>
+      {% set address_parts = [place.address, place.city, place.state, place.zipcode] %}
+      {% set address = address_parts | select | join(', ') %}
+      {% if address %}
+        <div>{{ address }}</div>
+      {% endif %}
+      {% if stop.notes %}
+        <div><strong>Notes:</strong> {{ stop.notes }}</div>
+      {% endif %}
+      {% if place.google_maps_url %}
+        <div><strong>Maps:</strong> {{ place.google_maps_url }}</div>
+      {% endif %}
+    </div>
+  {% endmacro %}
+
+  {% if stops %}
+    {% for day in day_groups %}
+      <section class="mb-4">
+        <h2 class="h5">{{ day.date }}</h2>
+        {% for stop in day.stops %}
+          {{ print_stop(stop) }}
+        {% endfor %}
+      </section>
+    {% endfor %}
+
+    {% if unscheduled_stops %}
+      <section class="mb-4">
+        <h2 class="h5">Unscheduled</h2>
+        {% for stop in unscheduled_stops %}
+          {{ print_stop(stop) }}
+        {% endfor %}
+      </section>
+    {% endif %}
+  {% else %}
+    <p>No itinerary stops yet.</p>
+  {% endif %}
+{% endblock %}
