@@ -314,3 +314,37 @@ def test_places_filter_not_featured_yet(client, app, seeded_content):
     assert "Test Place" in body
     assert "Featured Brewery" not in body
     assert 'option value="planned" selected' in body
+
+
+def test_places_sort_by_name(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        db.add(Place(name="Alpha Stop", city="Zedville", state="ZZ"))
+        db.add(Place(name="Zulu Stop", city="Aardvark", state="AA"))
+        db.commit()
+
+    resp = client.get("/places?sort=name")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert body.index("Alpha Stop") < body.index("Test Place") < body.index("Zulu Stop")
+    assert 'option value="name" selected' in body
+
+
+def test_places_sort_by_newest(client, app, seeded_content):
+    with app.app_context():
+        db = get_session(app)
+        db.add(Place(name="Newest Stop", city="Later", state="LS"))
+        db.commit()
+
+    resp = client.get("/places?sort=newest")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert body.index("Newest Stop") < body.index("Test Place")
+    assert 'option value="newest" selected' in body
+
+
+def test_places_invalid_sort_falls_back_to_location(client):
+    resp = client.get("/places?sort=bogus")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert 'option value="location" selected' in body
