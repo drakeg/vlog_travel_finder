@@ -75,6 +75,8 @@ class Trip(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String, nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -88,6 +90,7 @@ class TripPlace(Base):
     trip_id: Mapped[int] = mapped_column(ForeignKey("trip.id"), primary_key=True)
     place_id: Mapped[int] = mapped_column(ForeignKey("place.id"), primary_key=True)
     position: Mapped[int] = mapped_column(nullable=False, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,
