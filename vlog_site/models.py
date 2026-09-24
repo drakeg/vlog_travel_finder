@@ -56,6 +56,18 @@ class User(Base):
     )
 
 
+class SavedPlace(Base):
+    __tablename__ = "saved_place"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True)
+    place_id: Mapped[int] = mapped_column(ForeignKey("place.id"), primary_key=True)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 class AccessRule(Base):
     __tablename__ = "access_rule"
 

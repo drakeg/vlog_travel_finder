@@ -160,6 +160,23 @@
                       View details
                       <i class="fa-solid fa-arrow-right ms-1"></i>
                     </a>
+                    {% if is_authenticated %}
+                      {% if p.id in saved_place_ids %}
+                        <form method="post" action="{{ url_for('public.unsave_place', place_id=p.id) }}" class="d-grid mb-0">
+                          <input type="hidden" name="next" value="{{ request.full_path }}" />
+                          <button class="btn btn-outline-success" type="submit">
+                            <i class="fa-solid fa-bookmark me-1"></i>Saved
+                          </button>
+                        </form>
+                      {% else %}
+                        <form method="post" action="{{ url_for('public.save_place', place_id=p.id) }}" class="d-grid mb-0">
+                          <input type="hidden" name="next" value="{{ request.full_path }}" />
+                          <button class="btn btn-outline-primary" type="submit">
+                            <i class="fa-regular fa-bookmark me-1"></i>Save place
+                          </button>
+                        </form>
+                      {% endif %}
+                    {% endif %}
                     {% if p.google_maps_url %}
                       <a class="btn btn-outline-secondary" href="{{ p.google_maps_url }}" target="_blank" rel="noreferrer">
                         <i class="fa-solid fa-map-location-dot me-1"></i>Open in Google Maps

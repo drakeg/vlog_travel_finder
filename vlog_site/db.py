@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 6
+        latest_version = 7
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -328,6 +328,27 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 )
 
                 version = 6
+                _set_user_version(conn, version)
+                continue
+
+            if version == 6:
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS saved_place (
+                        user_id INTEGER NOT NULL,
+                        place_id INTEGER NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        PRIMARY KEY (user_id, place_id),
+                        FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE,
+                        FOREIGN KEY (place_id) REFERENCES place (id) ON DELETE CASCADE
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_saved_place_user_created_at
+                    ON saved_place(user_id, created_at);
+                    """
+                )
+
+                version = 7
                 _set_user_version(conn, version)
                 continue
 

@@ -23,3 +23,4 @@ def test_sqlite_schema_upgrade_runs(tmp_path, monkeypatch):
     assert "site_setting" in tables
     assert "blog_post" in tables
     assert "contact_message" in tables
+    assert "saved_place" in tables

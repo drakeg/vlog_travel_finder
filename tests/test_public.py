@@ -1,6 +1,6 @@
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
-from vlog_site.models import PageView, Place
+from vlog_site.models import PageView, Place, SavedPlace
 from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
@@ -348,3 +348,108 @@ def test_places_invalid_sort_falls_back_to_location(client):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'option value="location" selected' in body
+
+
+def test_saved_places_require_login(client, seeded_content):
+    place_id = seeded_content["place"].id
+    resp = client.post(f"/places/{place_id}/save")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+    resp = client.get("/saved")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+
+def test_member_can_save_and_unsave_place_without_duplicates(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "member@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    for _ in range(2):
+        resp = client.post(
+            f"/places/{place_id}/save",
+            data={"next": "/saved"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(SavedPlace).filter_by(place_id=place_id).count() == 1
+
+    resp = client.get("/saved")
+    body = resp.get_data(as_text=True)
+    assert "Test Place" in body
+
+    resp = client.get("/places")
+    assert "Saved" in resp.get_data(as_text=True)
+
+    resp = client.post(
+        f"/places/{place_id}/unsave",
+        data={"next": "/saved"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Test Place" not in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(SavedPlace).filter_by(place_id=place_id).count() == 0
+
+
+def test_saved_places_are_isolated_per_user(client, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={
+            "email": "first@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(f"/places/{place_id}/save")
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={
+            "email": "second@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    resp = client.get("/saved")
+    assert resp.status_code == 200
+    assert "Test Place" not in resp.get_data(as_text=True)
+
+
+def test_saved_place_redirect_rejects_external_next(client, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "member@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    resp = client.post(
+        f"/places/{place_id}/save",
+        data={"next": "https://example.com/"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith(f"/places/{place_id}")
