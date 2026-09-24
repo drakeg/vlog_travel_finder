@@ -41,6 +41,23 @@
           </form>
         {% endif %}
       {% endif %}
+      {% if is_authenticated and user_trips %}
+        <div class="dropdown">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-route me-1"></i>Add to trip
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for trip in user_trips %}
+              <li>
+                <form method="post" action="{{ url_for('public.trip_add_place', trip_id=trip.id, place_id=place.id) }}">
+                  <input type="hidden" name="next" value="{{ request.path }}" />
+                  <button class="dropdown-item" type="submit">{{ trip.name }}</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
       {% if place.google_maps_url %}
         <a class="btn btn-primary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">
           <i class="fa-solid fa-map-location-dot me-1"></i>Open in Google Maps
