@@ -887,3 +887,113 @@ def test_stop_notes_persist_and_enforce_trip_ownership(client, app, seeded_conte
         row = db.get(TripPlace, (trip_id, place_id))
         assert row is not None
         assert row.notes == "Arrive before 4 PM"
+
+
+def test_stop_schedule_persists_and_stays_within_trip_range(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "schedule@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Scheduled Trip",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-15",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Scheduled Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    resp = client.post(
+        f"/trips/{trip_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-10-12", "planned_time": "14:30"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "2026-10-12" in body
+    assert "14:30" in body
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.planned_date == "2026-10-12"
+        assert row.planned_time == "14:30"
+
+    resp = client.post(
+        f"/trips/{trip_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-10-20", "planned_time": "09:00"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Stop date must fall within the trip date range" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.planned_date == "2026-10-12"
+        assert row.planned_time == "14:30"
+
+
+def test_stop_schedule_rejects_invalid_values_and_enforces_ownership(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "schedule-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Schedule"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Schedule").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    resp = client.post(
+        f"/trips/{trip_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-02-30", "planned_time": "25:00"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Stop schedule must use a valid date and time" in resp.get_data(as_text=True)
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "schedule-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    assert (
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/schedule",
+            data={"planned_date": "2026-10-12", "planned_time": "12:00"},
+        ).status_code
+        == 404
+    )
