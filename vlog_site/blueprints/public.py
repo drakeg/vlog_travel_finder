@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, time
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
@@ -37,6 +37,24 @@ def _clean_iso_date(value: str | None) -> str | None:
 
 def _valid_trip_date_range(start_date: str | None, end_date: str | None) -> bool:
     return not (start_date and end_date and end_date < start_date)
+
+
+def _clean_hhmm_time(value: str | None) -> str | None:
+    cleaned = clean_str(value)
+    if not cleaned:
+        return None
+    parsed = time.fromisoformat(cleaned)
+    return parsed.strftime("%H:%M")
+
+
+def _stop_date_within_trip(trip: Trip, planned_date: str | None) -> bool:
+    if not planned_date:
+        return True
+    if trip.start_date and planned_date < trip.start_date:
+        return False
+    if trip.end_date and planned_date > trip.end_date:
+        return False
+    return True
 
 
 @public_bp.route("/uploads/<path:filename>")
@@ -350,6 +368,8 @@ def trip_detail(trip_id: int) -> str:
             "place": place,
             "position": trip_place.position,
             "notes": trip_place.notes,
+            "planned_date": trip_place.planned_date,
+            "planned_time": trip_place.planned_time,
         }
         for place, trip_place in rows
     ]
@@ -462,6 +482,32 @@ def trip_move_place(trip_id: int, place_id: int, direction: str):
         target = rows[target_index]
         current.position, target.position = target.position, current.position
         db.commit()
+
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/schedule", methods=["POST"])
+@login_required
+def trip_update_place_schedule(trip_id: int, place_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    row = db.get(TripPlace, (trip.id, place_id))
+    if row is None:
+        abort(404)
+
+    try:
+        planned_date = _clean_iso_date(request.form.get("planned_date"))
+        planned_time = _clean_hhmm_time(request.form.get("planned_time"))
+    except ValueError:
+        flash("Stop schedule must use a valid date and time", "error")
+    else:
+        if not _stop_date_within_trip(trip, planned_date):
+            flash("Stop date must fall within the trip date range", "error")
+        else:
+            row.planned_date = planned_date
+            row.planned_time = planned_time
+            db.commit()
+            flash("Stop schedule saved", "info")
 
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
