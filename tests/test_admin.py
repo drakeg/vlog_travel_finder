@@ -1,3 +1,4 @@
+import csv
 import io
 
 from werkzeug.security import check_password_hash
@@ -252,3 +253,157 @@ def test_admin_places_export_csv(client, app, seeded_content, admin_password):
     assert "https://www.youtube.com/watch?v=test" in body
     assert 'Great stop, with ""quoted"" notes' in body
     assert "and a second line" in body
+
+
+def test_admin_places_import_requires_login(client):
+    resp = client.post("/admin/places/import")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+
+def test_admin_places_import_creates_and_updates(client, app, seeded_content, admin_password):
+    _login(client, admin_password)
+
+    with app.app_context():
+        db = get_session(app)
+        existing = db.query(Place).filter_by(name="Test Place").first()
+        assert existing is not None
+        existing_id = existing.id
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "name",
+            "category",
+            "address",
+            "city",
+            "state",
+            "zipcode",
+            "latitude",
+            "longitude",
+            "venue_website_url",
+            "venue_youtube_url",
+            "venue_tiktok_url",
+            "venue_instagram_url",
+            "venue_facebook_url",
+            "vlog_youtube_url",
+            "vlog_tiktok_url",
+            "vlog_instagram_url",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+    )
+    writer.writerow(
+        [
+            existing_id,
+            "Updated Place",
+            "Museums",
+            "123 Main St",
+            "Updated City",
+            "PA",
+            "12345",
+            "40.1",
+            "-77.2",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "https://www.youtube.com/watch?v=updated",
+            "",
+            "",
+            "Updated notes",
+            "",
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "",
+            "New Brewery",
+            "Breweries",
+            "456 Beer Rd",
+            "Brewtown",
+            "NY",
+            "54321",
+            "42.2",
+            "-76.3",
+            "https://example.com",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "New place",
+            "",
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "",
+            "Bad Coordinates",
+            "Other",
+            "",
+            "",
+            "",
+            "",
+            "not-a-number",
+            "-76.0",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ]
+    )
+    csv_body = output.getvalue()
+
+    resp = client.post(
+        "/admin/places/import",
+        data={"csv_file": (io.BytesIO(csv_body.encode("utf-8")), "places.csv")},
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "1 created, 1 updated, 1 skipped" in body
+
+    with app.app_context():
+        db = get_session(app)
+        updated = db.get(Place, existing_id)
+        assert updated is not None
+        assert updated.name == "Updated Place"
+        assert updated.city == "Updated City"
+        assert updated.latitude == 40.1
+        assert updated.vlog_youtube_url == "https://www.youtube.com/watch?v=updated"
+
+        created = db.query(Place).filter_by(name="New Brewery").first()
+        assert created is not None
+        assert created.category is not None
+        assert created.category.name == "Breweries"
+
+
+def test_admin_places_import_rejects_missing_required_columns(client, admin_password):
+    _login(client, admin_password)
+    csv_body = "name,address\nMissing ID,123 Main St\n"
+
+    resp = client.post(
+        "/admin/places/import",
+        data={"csv_file": (io.BytesIO(csv_body.encode("utf-8")), "places.csv")},
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "CSV is missing required columns" in resp.get_data(as_text=True)
