@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import os
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
 from sqlalchemy import or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
-from ..models import BlogPost, Category, ContactMessage, Place
+from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace
 from ..services.mail_service import send_contact_email_if_configured
 from ..services.markdown_service import render_markdown
 from ..services.settings_service import get_setting
 from ..services.youtube_service import get_channel_url, get_latest_video, normalize_featured_embed_url
+from ..blueprints.auth import login_required
 from ..utils import clean_str
 
 
@@ -136,6 +137,15 @@ def places() -> str:
     places = db.execute(stmt).scalars().all()
     categories = db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
 
+    saved_place_ids: set[int] = set()
+    user_id = session.get("user_id")
+    if user_id is not None and not session.get("anonymous_preview"):
+        saved_place_ids = set(
+            db.execute(
+                select(SavedPlace.place_id).where(SavedPlace.user_id == user_id)
+            ).scalars().all()
+        )
+
     return render_template(
         "public/index.html",
         places=places,
@@ -146,6 +156,7 @@ def places() -> str:
         category_id=category_id or "",
         vlog_status=vlog_status or "",
         sort=sort,
+        saved_place_ids=saved_place_ids,
     )
 
 
@@ -156,7 +167,61 @@ def place_detail(place_id: int) -> str:
     place = db.get(Place, place_id)
     if place is None:
         abort(404)
-    return render_template("public/detail.html", place=place)
+
+    is_saved = False
+    user_id = session.get("user_id")
+    if user_id is not None and not session.get("anonymous_preview"):
+        is_saved = db.get(SavedPlace, (user_id, place_id)) is not None
+
+    return render_template("public/detail.html", place=place, is_saved=is_saved)
+
+
+@public_bp.route("/saved")
+@login_required
+def saved_places() -> str:
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+    places = (
+        db.execute(
+            select(Place)
+            .join(SavedPlace, SavedPlace.place_id == Place.id)
+            .where(SavedPlace.user_id == user_id)
+            .order_by(SavedPlace.created_at.desc(), Place.name.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return render_template("public/saved.html", places=places)
+
+
+@public_bp.route("/places/<int:place_id>/save", methods=["POST"])
+@login_required
+def save_place(place_id: int):
+    db = get_session(current_app)
+    if db.get(Place, place_id) is None:
+        abort(404)
+
+    user_id = int(session["user_id"])
+    if db.get(SavedPlace, (user_id, place_id)) is None:
+        db.add(SavedPlace(user_id=user_id, place_id=place_id))
+        db.commit()
+
+    next_url = request.form.get("next") or url_for("public.place_detail", place_id=place_id)
+    return redirect(next_url)
+
+
+@public_bp.route("/places/<int:place_id>/unsave", methods=["POST"])
+@login_required
+def unsave_place(place_id: int):
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+    saved = db.get(SavedPlace, (user_id, place_id))
+    if saved is not None:
+        db.delete(saved)
+        db.commit()
+
+    next_url = request.form.get("next") or url_for("public.saved_places")
+    return redirect(next_url)
 
 
 @public_bp.route("/blog")
