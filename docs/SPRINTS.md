@@ -136,21 +136,43 @@ Deferred:
 
 ### Sprint 2 — Itinerary details
 
-Status: In progress
+Status: Complete
 
 Planning issue: #113
 
-Current work:
+Shipped:
 
-- #114 — add optional trip start/end dates;
-- validate that end dates do not precede start dates;
-- add private per-stop planning notes;
-- enforce ownership on stop-note edits;
-- cover schema, validation, persistence, and authorization in tests.
+- optional trip start/end dates;
+- malformed and reversed date-range validation;
+- private per-stop planning notes;
+- ownership-scoped stop-note updates;
+- schema, validation, persistence, and authorization regression coverage.
 
-Out of scope for Sprint 2:
+Deferred:
 
 - route optimization;
+- travel-time calculations;
+- calendar synchronization;
+- shared or collaborative trips;
+- paid external services.
+
+### Sprint 3 — Stop scheduling
+
+Status: In progress
+
+Planning issue: #116
+
+Current work:
+
+- #117 — add optional planned date/time to each trip stop;
+- validate ISO dates and times;
+- constrain stop dates to the trip date range when one is configured;
+- keep scheduling edits ownership-scoped;
+- cover schema, persistence, validation, and authorization in tests.
+
+Out of scope for Sprint 3:
+
+- automatic route optimization;
 - travel-time calculations;
 - calendar synchronization;
 - shared or collaborative trips;
