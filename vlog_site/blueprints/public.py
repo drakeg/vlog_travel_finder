@@ -85,6 +85,7 @@ def places() -> str:
     city = clean_str(request.args.get("city"))
     state = clean_str(request.args.get("state"))
     category_id_raw = clean_str(request.args.get("category_id"))
+    vlog_status = clean_str(request.args.get("vlog_status"))
     try:
         category_id = int(category_id_raw) if category_id_raw else None
     except ValueError:
@@ -108,6 +109,20 @@ def places() -> str:
         stmt = stmt.where(Place.state == state)
     if category_id:
         stmt = stmt.where(Place.category_id == category_id)
+    if vlog_status == "featured":
+        stmt = stmt.where(
+            or_(
+                Place.vlog_youtube_url.is_not(None),
+                Place.vlog_tiktok_url.is_not(None),
+                Place.vlog_instagram_url.is_not(None),
+            )
+        )
+    elif vlog_status == "planned":
+        stmt = stmt.where(
+            Place.vlog_youtube_url.is_(None),
+            Place.vlog_tiktok_url.is_(None),
+            Place.vlog_instagram_url.is_(None),
+        )
 
     places = db.execute(stmt).scalars().all()
     categories = db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
@@ -120,6 +135,7 @@ def places() -> str:
         city=city or "",
         state=state or "",
         category_id=category_id or "",
+        vlog_status=vlog_status or "",
     )
 
 
