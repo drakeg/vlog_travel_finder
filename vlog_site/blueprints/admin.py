@@ -192,6 +192,102 @@ def admin_places_export() -> Response:
     )
 
 
+@admin_bp.route("/places/import", methods=["POST"])
+@admin_required
+def admin_places_import():
+    db = get_session(current_app)
+    uploaded = request.files.get("csv_file")
+    if uploaded is None or not uploaded.filename:
+        flash("Choose a CSV file to import", "error")
+        return redirect(url_for("admin.admin_places"))
+
+    try:
+        content = uploaded.stream.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        flash("CSV file must be UTF-8 encoded", "error")
+        return redirect(url_for("admin.admin_places"))
+
+    reader = csv.DictReader(io.StringIO(content))
+    required_columns = {"id", "name", "category"}
+    if not reader.fieldnames or not required_columns.issubset(set(reader.fieldnames)):
+        flash("CSV is missing required columns: id, name, category", "error")
+        return redirect(url_for("admin.admin_places"))
+
+    created = 0
+    updated = 0
+    skipped = 0
+
+    def _optional_float(value: str | None) -> float | None:
+        cleaned = clean_str(value)
+        if not cleaned:
+            return None
+        return float(cleaned)
+
+    for row in reader:
+        name = clean_str(row.get("name"))
+        if not name:
+            skipped += 1
+            continue
+
+        try:
+            latitude = _optional_float(row.get("latitude"))
+            longitude = _optional_float(row.get("longitude"))
+        except ValueError:
+            skipped += 1
+            continue
+
+        category = None
+        category_name = clean_str(row.get("category"))
+        if category_name:
+            category = db.execute(select(Category).where(Category.name == category_name)).scalars().first()
+            if category is None:
+                category = Category(name=category_name)
+                db.add(category)
+                db.flush()
+
+        place = None
+        raw_id = clean_str(row.get("id"))
+        if raw_id:
+            try:
+                place_id = int(raw_id)
+            except ValueError:
+                place_id = None
+            if place_id is not None:
+                place = db.get(Place, place_id)
+
+        if place is None:
+            place = Place(name=name)
+            db.add(place)
+            created += 1
+        else:
+            updated += 1
+
+        place.name = name
+        place.category_id = category.id if category else None
+        place.address = clean_str(row.get("address"))
+        place.city = clean_str(row.get("city"))
+        place.state = clean_str(row.get("state"))
+        place.zipcode = clean_str(row.get("zipcode"))
+        place.latitude = latitude
+        place.longitude = longitude
+        place.venue_website_url = clean_str(row.get("venue_website_url"))
+        place.venue_youtube_url = clean_str(row.get("venue_youtube_url"))
+        place.venue_tiktok_url = clean_str(row.get("venue_tiktok_url"))
+        place.venue_instagram_url = clean_str(row.get("venue_instagram_url"))
+        place.venue_facebook_url = clean_str(row.get("venue_facebook_url"))
+        place.vlog_youtube_url = clean_str(row.get("vlog_youtube_url"))
+        place.vlog_tiktok_url = clean_str(row.get("vlog_tiktok_url"))
+        place.vlog_instagram_url = clean_str(row.get("vlog_instagram_url"))
+        place.notes = clean_str(row.get("notes"))
+
+    db.commit()
+    flash(
+        f"CSV import complete: {created} created, {updated} updated, {skipped} skipped.",
+        "info",
+    )
+    return redirect(url_for("admin.admin_places"))
+
+
 @admin_bp.route("/settings", methods=["GET", "POST"])
 @admin_required
 def admin_settings() -> str:
