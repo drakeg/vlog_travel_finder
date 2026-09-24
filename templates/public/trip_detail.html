@@ -93,6 +93,29 @@
               </div>
             </div>
 
+            <form method="post" action="{{ url_for('public.trip_update_place_schedule', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-sm-5">
+                  <label class="form-label small" for="stop-date-{{ place.id }}">Planned date</label>
+                  <input class="form-control" id="stop-date-{{ place.id }}" type="date" name="planned_date" value="{{ stop.planned_date or '' }}" />
+                </div>
+                <div class="col-12 col-sm-4">
+                  <label class="form-label small" for="stop-time-{{ place.id }}">Planned time</label>
+                  <input class="form-control" id="stop-time-{{ place.id }}" type="time" name="planned_time" value="{{ stop.planned_time or '' }}" />
+                </div>
+                <div class="col-12 col-sm-3 d-grid">
+                  <button class="btn btn-outline-secondary" type="submit">Save schedule</button>
+                </div>
+              </div>
+              {% if stop.planned_date or stop.planned_time %}
+                <div class="small text-body-secondary mt-2">
+                  <i class="fa-regular fa-calendar me-1"></i>
+                  {% if stop.planned_date %}{{ stop.planned_date }}{% else %}Date TBD{% endif %}
+                  {% if stop.planned_time %} at {{ stop.planned_time }}{% endif %}
+                </div>
+              {% endif %}
+            </form>
+
             <form method="post" action="{{ url_for('public.trip_update_place_notes', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
               <label class="form-label small" for="stop-notes-{{ place.id }}">Stop notes</label>
               <div class="input-group">
