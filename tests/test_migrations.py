@@ -29,5 +29,7 @@ def test_sqlite_schema_upgrade_runs(tmp_path, monkeypatch):
 
     trip_columns = {column["name"] for column in insp.get_columns("trip")}
     trip_place_columns = {column["name"] for column in insp.get_columns("trip_place")}
+    saved_place_columns = {column["name"] for column in insp.get_columns("saved_place")}
     assert "notes" in trip_columns
     assert "position" in trip_place_columns
+    assert "position" not in saved_place_columns
