@@ -1,3 +1,4 @@
+import csv
 import io
 
 from werkzeug.security import check_password_hash
@@ -269,16 +270,105 @@ def test_admin_places_import_creates_and_updates(client, app, seeded_content, ad
         assert existing is not None
         existing_id = existing.id
 
-    csv_body = (
-        "id,name,category,address,city,state,zipcode,latitude,longitude,"
-        "venue_website_url,venue_youtube_url,venue_tiktok_url,venue_instagram_url,"
-        "venue_facebook_url,vlog_youtube_url,vlog_tiktok_url,vlog_instagram_url,notes,created_at,updated_at\n"
-        f"{existing_id},Updated Place,Museums,123 Main St,Updated City,PA,12345,40.1,-77.2,"
-        ",,,,,,https://www.youtube.com/watch?v=updated,,,Updated notes,,\n"
-        ",New Brewery,Breweries,456 Beer Rd,Brewtown,NY,54321,42.2,-76.3,"
-        "https://example.com,,,,,,,,New place,,\n"
-        ",Bad Coordinates,Other,,,,,not-a-number,-76.0,,,,,,,,,,,\n"
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "name",
+            "category",
+            "address",
+            "city",
+            "state",
+            "zipcode",
+            "latitude",
+            "longitude",
+            "venue_website_url",
+            "venue_youtube_url",
+            "venue_tiktok_url",
+            "venue_instagram_url",
+            "venue_facebook_url",
+            "vlog_youtube_url",
+            "vlog_tiktok_url",
+            "vlog_instagram_url",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
     )
+    writer.writerow(
+        [
+            existing_id,
+            "Updated Place",
+            "Museums",
+            "123 Main St",
+            "Updated City",
+            "PA",
+            "12345",
+            "40.1",
+            "-77.2",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "https://www.youtube.com/watch?v=updated",
+            "",
+            "",
+            "Updated notes",
+            "",
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "",
+            "New Brewery",
+            "Breweries",
+            "456 Beer Rd",
+            "Brewtown",
+            "NY",
+            "54321",
+            "42.2",
+            "-76.3",
+            "https://example.com",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "New place",
+            "",
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "",
+            "Bad Coordinates",
+            "Other",
+            "",
+            "",
+            "",
+            "",
+            "not-a-number",
+            "-76.0",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ]
+    )
+    csv_body = output.getvalue()
 
     resp = client.post(
         "/admin/places/import",
