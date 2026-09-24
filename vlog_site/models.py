@@ -61,7 +61,6 @@ class SavedPlace(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), primary_key=True)
     place_id: Mapped[int] = mapped_column(ForeignKey("place.id"), primary_key=True)
-    position: Mapped[int] = mapped_column(nullable=False, default=0)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -88,6 +87,7 @@ class TripPlace(Base):
 
     trip_id: Mapped[int] = mapped_column(ForeignKey("trip.id"), primary_key=True)
     place_id: Mapped[int] = mapped_column(ForeignKey("place.id"), primary_key=True)
+    position: Mapped[int] = mapped_column(nullable=False, default=0)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,
