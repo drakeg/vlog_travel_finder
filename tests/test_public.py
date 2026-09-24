@@ -1395,3 +1395,151 @@ def test_calendar_export_without_scheduled_stops_is_valid(client, app):
     assert body.startswith("BEGIN:VCALENDAR\r\n")
     assert body.endswith("END:VCALENDAR\r\n")
     assert "BEGIN:VEVENT" not in body
+
+
+def test_trip_duplicate_copies_metadata_and_stops_independently(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "duplicate@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Original Trip",
+            "notes": "Original notes",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-12",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        original = db.query(Trip).filter_by(name="Original Trip").first()
+        assert original is not None
+        original_id = original.id
+
+    client.post(f"/trips/{original_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{original_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-10-11", "planned_time": "09:30"},
+    )
+    client.post(
+        f"/trips/{original_id}/places/{place_id}/notes",
+        data={"notes": "Original stop notes"},
+    )
+
+    resp = client.post(f"/trips/{original_id}/duplicate", follow_redirects=False)
+    assert resp.status_code == 302
+
+    with app.app_context():
+        db = get_session(app)
+        duplicate = db.query(Trip).filter_by(name="Original Trip (Copy)").first()
+        assert duplicate is not None
+        duplicate_id = duplicate.id
+        assert duplicate_id != original_id
+        assert duplicate.notes == "Original notes"
+        assert duplicate.start_date == "2026-10-10"
+        assert duplicate.end_date == "2026-10-12"
+
+        original_stop = db.get(TripPlace, (original_id, place_id))
+        duplicate_stop = db.get(TripPlace, (duplicate_id, place_id))
+        assert original_stop is not None
+        assert duplicate_stop is not None
+        assert duplicate_stop.position == original_stop.position
+        assert duplicate_stop.notes == "Original stop notes"
+        assert duplicate_stop.planned_date == "2026-10-11"
+        assert duplicate_stop.planned_time == "09:30"
+
+    client.post(
+        f"/trips/{duplicate_id}/update",
+        data={
+            "name": "Changed Copy",
+            "notes": "Changed notes",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-12",
+        },
+    )
+    client.post(
+        f"/trips/{duplicate_id}/places/{place_id}/notes",
+        data={"notes": "Changed stop notes"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        original = db.get(Trip, original_id)
+        original_stop = db.get(TripPlace, (original_id, place_id))
+        assert original is not None
+        assert original.name == "Original Trip"
+        assert original.notes == "Original notes"
+        assert original_stop is not None
+        assert original_stop.notes == "Original stop notes"
+
+
+def test_trip_duplicate_enforces_ownership(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "duplicate-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Source").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "duplicate-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    assert client.post(f"/trips/{trip_id}/duplicate").status_code == 404
+
+
+def test_trip_duplicate_handles_empty_trip(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "duplicate-empty@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Empty Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Empty Source").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    resp = client.post(f"/trips/{trip_id}/duplicate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert "Empty Source (Copy)" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        duplicate = db.query(Trip).filter_by(name="Empty Source (Copy)").first()
+        assert duplicate is not None
+        assert (
+            db.query(TripPlace).filter_by(trip_id=duplicate.id).count()
+            == 0
+        )

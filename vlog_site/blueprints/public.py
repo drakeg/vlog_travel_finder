@@ -587,6 +587,53 @@ def trip_update(trip_id: int):
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
+@public_bp.route("/trips/<int:trip_id>/duplicate", methods=["POST"])
+@login_required
+def trip_duplicate(trip_id: int):
+    db = get_session(current_app)
+    source = _current_user_trip_or_404(db, trip_id)
+    user_id = int(session["user_id"])
+
+    duplicate = Trip(
+        user_id=user_id,
+        name=f"{source.name} (Copy)",
+        notes=source.notes,
+        start_date=source.start_date,
+        end_date=source.end_date,
+    )
+    db.add(duplicate)
+    db.flush()
+
+    source_stops = (
+        db.execute(
+            select(TripPlace)
+            .where(TripPlace.trip_id == source.id)
+            .order_by(
+                TripPlace.position.asc(),
+                TripPlace.created_at.asc(),
+                TripPlace.place_id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for stop in source_stops:
+        db.add(
+            TripPlace(
+                trip_id=duplicate.id,
+                place_id=stop.place_id,
+                position=stop.position,
+                notes=stop.notes,
+                planned_date=stop.planned_date,
+                planned_time=stop.planned_time,
+            )
+        )
+
+    db.commit()
+    flash("Trip duplicated", "info")
+    return redirect(url_for("public.trip_detail", trip_id=duplicate.id))
+
+
 @public_bp.route("/trips/<int:trip_id>/delete", methods=["POST"])
 @login_required
 def trip_delete(trip_id: int):

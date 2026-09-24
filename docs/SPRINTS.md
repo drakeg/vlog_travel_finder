@@ -229,24 +229,48 @@ Deferred:
 
 ### Sprint 6 — Calendar export
 
-Status: In progress
+Status: Complete
 
 Planning issue: #125
 
-Current work:
+Shipped:
 
-- #126 — add an ownership-scoped iCalendar (.ics) export;
-- export one event per scheduled stop;
-- support both all-day and timed stop events;
-- include notes, location text, and Google Maps URLs;
-- safely escape iCalendar text;
-- omit unscheduled stops while keeping the calendar valid;
-- cover auth, ownership, formatting, escaping, and no-event trips.
+- ownership-scoped iCalendar (.ics) export;
+- one VEVENT per scheduled stop;
+- all-day events for date-only stops;
+- floating local-time events for timed stops;
+- stop notes, location text, and Google Maps URLs when available;
+- safe iCalendar text escaping;
+- valid calendars when no stops are scheduled;
+- auth, ownership, formatting, escaping, and no-event regression coverage.
 
-Out of scope for Sprint 6:
+Deferred:
 
 - direct Google Calendar or Outlook synchronization;
 - reminders/notifications;
 - route optimization;
 - shared or collaborative trips;
+- paid external services.
+
+### Sprint 7 — Trip duplication
+
+Status: In progress
+
+Planning issue: #128
+
+Current work:
+
+- #129 — add ownership-scoped trip duplication;
+- copy trip metadata and all stop memberships;
+- preserve stop order, notes, schedules, and dates;
+- give copies a distinguishable default name;
+- keep source and copy independent;
+- cover populated trips, empty trips, independence, and cross-user denial.
+
+Out of scope for Sprint 7:
+
+- shared templates across users;
+- public trip templates;
+- automatic date shifting;
+- route optimization;
 - paid external services.
