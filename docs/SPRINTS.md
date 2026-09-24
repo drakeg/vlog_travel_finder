@@ -110,6 +110,25 @@ Small dependency updates, documentation corrections, and urgent production fixes
 
 Add concise sprint closeouts below this heading as formal sprints complete.
 
-### Sprint 1
+### Sprint 1 — Trip planning usability
 
-Not yet defined.
+Status: In progress
+
+Planning issue: #110
+
+Goal: make private trip lists more useful as practical planning tools without adding route optimization, paid APIs, or collaboration complexity.
+
+Current work:
+
+- #111 — add trip notes and persistent stop ordering;
+- new places append to the end of the trip;
+- stop order can be adjusted with explicit up/down controls;
+- ownership and migration behavior are covered by automated tests.
+
+Out of scope for Sprint 1:
+
+- route optimization;
+- maps API integration;
+- distance/time calculations;
+- shared or collaborative trips;
+- paid external services.
