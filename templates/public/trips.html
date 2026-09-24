@@ -8,9 +8,10 @@
       <h1 class="mb-1">Trips</h1>
       <div class="text-muted">Organize places into named trip lists.</div>
     </div>
-    <form method="post" action="{{ url_for('public.trips') }}" class="d-flex gap-2">
+    <form method="post" action="{{ url_for('public.trips') }}" class="d-flex flex-column flex-md-row gap-2">
       <input class="form-control" type="text" name="name" placeholder="New trip name" required />
-      <button class="btn btn-primary" type="submit">
+      <input class="form-control" type="text" name="notes" placeholder="Optional trip notes" />
+      <button class="btn btn-primary text-nowrap" type="submit">
         <i class="fa-solid fa-plus me-1"></i>Create trip
       </button>
     </form>
@@ -23,9 +24,12 @@
           <div class="card shadow-sm h-100">
             <div class="card-body d-flex flex-column">
               <h2 class="h5">{{ trip.name }}</h2>
-              <div class="text-muted mb-3">
+              <div class="text-muted mb-2">
                 {{ trip_counts.get(trip.id, 0) }} place{% if trip_counts.get(trip.id, 0) != 1 %}s{% endif %}
               </div>
+              {% if trip.notes %}
+                <p class="text-body-secondary small mb-3">{{ trip.notes }}</p>
+              {% endif %}
               <div class="mt-auto d-flex gap-2">
                 <a class="btn btn-outline-primary flex-grow-1" href="{{ url_for('public.trip_detail', trip_id=trip.id) }}">
                   View trip
