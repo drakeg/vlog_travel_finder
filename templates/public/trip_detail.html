@@ -49,95 +49,126 @@
     </div>
   </div>
 
-  {% if stops %}
-    <div class="d-flex align-items-baseline justify-content-between mb-2">
-      <h2 class="h4 mb-0">Stops</h2>
-      <div class="text-muted small">{{ stops|length }} total</div>
-    </div>
-
-    <div class="d-grid gap-3">
-      {% for stop in stops %}
-        {% set place = stop.place %}
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3">
-              <div class="d-flex gap-3">
-                <div class="display-6 fw-bold text-body-tertiary" aria-label="Stop {{ loop.index }}">{{ loop.index }}</div>
-                <div>
-                  <a class="h5 text-decoration-none" href="{{ url_for('public.place_detail', place_id=place.id) }}">{{ place.name }}</a>
-                  <div class="text-muted">
-                    {% if place.city %}{{ place.city }}{% endif %}{% if place.city and place.state %}, {% endif %}{% if place.state %}{{ place.state }}{% endif %}
-                  </div>
-                  {% if place.category_name %}
-                    <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis mt-2">{{ place.category_name }}</span>
-                  {% endif %}
-                </div>
+  {% macro render_stop(stop) %}
+    {% set place = stop.place %}
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3">
+          <div class="d-flex gap-3">
+            <div class="display-6 fw-bold text-body-tertiary" aria-label="Stop {{ stop.sequence }}">{{ stop.sequence }}</div>
+            <div>
+              <a class="h5 text-decoration-none" href="{{ url_for('public.place_detail', place_id=place.id) }}">{{ place.name }}</a>
+              <div class="text-muted">
+                {% if place.city %}{{ place.city }}{% endif %}{% if place.city and place.state %}, {% endif %}{% if place.state %}{{ place.state }}{% endif %}
               </div>
-
-              <div class="d-flex gap-2 flex-wrap">
-                <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='up') }}" class="mb-0">
-                  <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop up" {% if loop.first %}disabled{% endif %}>
-                    <i class="fa-solid fa-arrow-up"></i>
-                  </button>
-                </form>
-                <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='down') }}" class="mb-0">
-                  <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop down" {% if loop.last %}disabled{% endif %}>
-                    <i class="fa-solid fa-arrow-down"></i>
-                  </button>
-                </form>
-                <form method="post" action="{{ url_for('public.trip_remove_place', trip_id=trip.id, place_id=place.id) }}" class="mb-0">
-                  <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove from trip">
-                    <i class="fa-solid fa-xmark"></i>
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            <form method="post" action="{{ url_for('public.trip_update_place_schedule', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
-              <div class="row g-2 align-items-end">
-                <div class="col-12 col-sm-5">
-                  <label class="form-label small" for="stop-date-{{ place.id }}">Planned date</label>
-                  <input class="form-control" id="stop-date-{{ place.id }}" type="date" name="planned_date" value="{{ stop.planned_date or '' }}" />
-                </div>
-                <div class="col-12 col-sm-4">
-                  <label class="form-label small" for="stop-time-{{ place.id }}">Planned time</label>
-                  <input class="form-control" id="stop-time-{{ place.id }}" type="time" name="planned_time" value="{{ stop.planned_time or '' }}" />
-                </div>
-                <div class="col-12 col-sm-3 d-grid">
-                  <button class="btn btn-outline-secondary" type="submit">Save schedule</button>
-                </div>
-              </div>
-              {% if stop.planned_date or stop.planned_time %}
-                <div class="small text-body-secondary mt-2">
-                  <i class="fa-regular fa-calendar me-1"></i>
-                  {% if stop.planned_date %}{{ stop.planned_date }}{% else %}Date TBD{% endif %}
-                  {% if stop.planned_time %} at {{ stop.planned_time }}{% endif %}
-                </div>
-              {% endif %}
-            </form>
-
-            <form method="post" action="{{ url_for('public.trip_update_place_notes', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
-              <label class="form-label small" for="stop-notes-{{ place.id }}">Stop notes</label>
-              <div class="input-group">
-                <input class="form-control" id="stop-notes-{{ place.id }}" type="text" name="notes" value="{{ stop.notes or '' }}" placeholder="Reservation, timing, parking, or other notes" />
-                <button class="btn btn-outline-secondary" type="submit">Save</button>
-              </div>
-            </form>
-
-            <div class="pt-3 d-flex gap-2 flex-wrap">
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('public.place_detail', place_id=place.id) }}">View details</a>
-              {% if place.google_maps_url %}
-                <a class="btn btn-sm btn-outline-secondary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">Open in Maps</a>
+              {% if place.category_name %}
+                <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis mt-2">{{ place.category_name }}</span>
               {% endif %}
             </div>
           </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='up') }}" class="mb-0">
+              <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop up" {% if stop.sequence == 1 %}disabled{% endif %}>
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='down') }}" class="mb-0">
+              <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop down" {% if stop.sequence == stops|length %}disabled{% endif %}>
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('public.trip_remove_place', trip_id=trip.id, place_id=place.id) }}" class="mb-0">
+              <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove from trip">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </form>
+          </div>
         </div>
-      {% endfor %}
+
+        <form method="post" action="{{ url_for('public.trip_update_place_schedule', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-sm-5">
+              <label class="form-label small" for="stop-date-{{ place.id }}">Planned date</label>
+              <input class="form-control" id="stop-date-{{ place.id }}" type="date" name="planned_date" value="{{ stop.planned_date or '' }}" />
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label small" for="stop-time-{{ place.id }}">Planned time</label>
+              <input class="form-control" id="stop-time-{{ place.id }}" type="time" name="planned_time" value="{{ stop.planned_time or '' }}" />
+            </div>
+            <div class="col-12 col-sm-3 d-grid">
+              <button class="btn btn-outline-secondary" type="submit">Save schedule</button>
+            </div>
+          </div>
+          {% if stop.planned_date or stop.planned_time %}
+            <div class="small text-body-secondary mt-2">
+              <i class="fa-regular fa-calendar me-1"></i>
+              {% if stop.planned_date %}{{ stop.planned_date }}{% else %}Date TBD{% endif %}
+              {% if stop.planned_time %} at {{ stop.planned_time }}{% endif %}
+            </div>
+          {% endif %}
+        </form>
+
+        <form method="post" action="{{ url_for('public.trip_update_place_notes', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+          <label class="form-label small" for="stop-notes-{{ place.id }}">Stop notes</label>
+          <div class="input-group">
+            <input class="form-control" id="stop-notes-{{ place.id }}" type="text" name="notes" value="{{ stop.notes or '' }}" placeholder="Reservation, timing, parking, or other notes" />
+            <button class="btn btn-outline-secondary" type="submit">Save</button>
+          </div>
+        </form>
+
+        <div class="pt-3 d-flex gap-2 flex-wrap">
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('public.place_detail', place_id=place.id) }}">View details</a>
+          {% if place.google_maps_url %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">Open in Maps</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
+  {% endmacro %}
+
+  {% if stops %}
+    <div class="d-flex align-items-baseline justify-content-between mb-3">
+      <h2 class="h4 mb-0">Itinerary</h2>
+      <div class="text-muted small">{{ stops|length }} total stop{% if stops|length != 1 %}s{% endif %}</div>
+    </div>
+
+    {% for day in day_groups %}
+      <section class="mb-4" aria-labelledby="day-{{ loop.index }}">
+        <div class="d-flex align-items-baseline justify-content-between mb-2">
+          <h3 class="h5 mb-0" id="day-{{ loop.index }}">
+            <i class="fa-regular fa-calendar me-1"></i>{{ day.date }}
+          </h3>
+          <div class="text-muted small">{{ day.stops|length }} stop{% if day.stops|length != 1 %}s{% endif %}</div>
+        </div>
+        <div class="d-grid gap-3">
+          {% for stop in day.stops %}
+            {{ render_stop(stop) }}
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+
+    {% if unscheduled_stops %}
+      <section class="mb-4" aria-labelledby="unscheduled-stops">
+        <div class="d-flex align-items-baseline justify-content-between mb-2">
+          <h3 class="h5 mb-0" id="unscheduled-stops">
+            <i class="fa-regular fa-clock me-1"></i>Unscheduled
+          </h3>
+          <div class="text-muted small">{{ unscheduled_stops|length }} stop{% if unscheduled_stops|length != 1 %}s{% endif %}</div>
+        </div>
+        <div class="d-grid gap-3">
+          {% for stop in unscheduled_stops %}
+            {{ render_stop(stop) }}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
   {% else %}
     <div class="card shadow-sm">
       <div class="card-body">
-        <p class="mb-3">This trip does not have any places yet.</p>
+        <h2 class="h5">No itinerary stops yet</h2>
+        <p class="mb-3">Add places to this trip to start building the itinerary.</p>
         <a class="btn btn-primary" href="{{ url_for('public.places') }}">Browse places</a>
       </div>
     </div>
