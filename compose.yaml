@@ -1,0 +1,40 @@
+services:
+  app:
+    build:
+      context: .
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-docker-compose-dev-secret}
+      DATABASE_URL: sqlite:////app/instance/vlog_site.sqlite
+      FLASK_DEBUG: "1"
+    command:
+      - python
+      - -m
+      - flask
+      - --app
+      - vlog_site:create_app
+      - run
+      - --host=0.0.0.0
+      - --port=5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - vlog_instance:/app/instance
+
+  test:
+    build:
+      context: .
+    profiles:
+      - test
+    environment:
+      SECRET_KEY: test
+    command:
+      - python
+      - -m
+      - pytest
+      - -q
+    volumes:
+      - .:/app
+
+volumes:
+  vlog_instance:
