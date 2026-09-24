@@ -1185,7 +1185,10 @@ def test_itinerary_exports_include_trip_and_stop_details(client, app, seeded_con
     assert "13:30" in print_body
     assert "Stop-level notes" in print_body
     assert "Test Place" in print_body
-    assert "<form" not in print_body
+    assert f"/trips/{trip_id}/update" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/schedule" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/notes" not in print_body
+    assert f"/trips/{trip_id}/places/{place_id}/remove" not in print_body
 
     text_resp = client.get(f"/trips/{trip_id}/itinerary.txt")
     assert text_resp.status_code == 200
