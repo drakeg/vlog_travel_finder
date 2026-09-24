@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, time
+from datetime import date, datetime, time, timezone
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
@@ -55,6 +55,22 @@ def _stop_date_within_trip(trip: Trip, planned_date: str | None) -> bool:
     if trip.end_date and planned_date > trip.end_date:
         return False
     return True
+
+
+def _ics_escape(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\r", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _place_address(place: Place) -> str:
+    parts = [place.address, place.city, place.state, place.zipcode]
+    return ", ".join(part.strip() for part in parts if part and part.strip())
 
 
 @public_bp.route("/uploads/<path:filename>")
@@ -473,6 +489,72 @@ def trip_text_export(trip_id: int):
     response = current_app.response_class(content, mimetype="text/plain")
     response.headers["Content-Disposition"] = (
         f'attachment; filename="trip-{trip.id}-itinerary.txt"'
+    )
+    return response
+
+
+@public_bp.route("/trips/<int:trip_id>/itinerary.ics")
+@login_required
+def trip_calendar_export(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    stops, _, _ = _trip_itinerary_data(db, trip)
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Vlog Travel Finder//Trip Itinerary//EN",
+        "CALSCALE:GREGORIAN",
+    ]
+    dtstamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    for stop in stops:
+        planned_date = stop["planned_date"]
+        if not planned_date:
+            continue
+
+        place = stop["place"]
+        date_value = planned_date.replace("-", "")
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:trip-{trip.id}-place-{place.id}@vlog-travel-finder",
+                f"DTSTAMP:{dtstamp}",
+            ]
+        )
+
+        if stop["planned_time"]:
+            time_value = stop["planned_time"].replace(":", "")
+            lines.append(f"DTSTART:{date_value}T{time_value}00")
+        else:
+            lines.append(f"DTSTART;VALUE=DATE:{date_value}")
+
+        lines.append(f"SUMMARY:{_ics_escape(place.name)}")
+
+        address = _place_address(place)
+        if address:
+            lines.append(f"LOCATION:{_ics_escape(address)}")
+
+        description_parts = []
+        if stop["notes"]:
+            description_parts.append(stop["notes"])
+        if place.google_maps_url:
+            description_parts.append(f"Maps: {place.google_maps_url}")
+        if description_parts:
+            lines.append(
+                "DESCRIPTION:" + _ics_escape("\n".join(description_parts))
+            )
+
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+    content = "\r\n".join(lines) + "\r\n"
+    response = current_app.response_class(
+        content,
+        mimetype="text/calendar",
+    )
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="trip-{trip.id}-itinerary.ics"'
     )
     return response
 

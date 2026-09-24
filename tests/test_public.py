@@ -1264,3 +1264,134 @@ def test_empty_trip_exports_have_clear_content(client, app):
     assert "No itinerary stops yet." in client.get(
         f"/trips/{trip_id}/itinerary.txt"
     ).get_data(as_text=True)
+
+
+def test_calendar_export_requires_login(client):
+    assert client.get("/trips/1/itinerary.ics").status_code == 302
+
+
+def test_calendar_export_contains_all_day_and_timed_events(client, app, seeded_content):
+    first_place_id = seeded_content["place"].id
+
+    with app.app_context():
+        db = get_session(app)
+        second = Place(
+            name="Brewery, Taproom; East",
+            address="123 Main St",
+            city="Ithaca",
+            state="NY",
+            zipcode="14850",
+        )
+        third = Place(name="Unscheduled Calendar Stop")
+        db.add_all([second, third])
+        db.commit()
+        second_id = second.id
+        third_id = third.id
+
+    client.post(
+        "/register",
+        data={
+            "email": "calendar@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Calendar Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Calendar Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_place_id, second_id, third_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    client.post(
+        f"/trips/{trip_id}/places/{first_place_id}/schedule",
+        data={"planned_date": "2026-10-11", "planned_time": ""},
+    )
+    client.post(
+        f"/trips/{trip_id}/places/{second_id}/schedule",
+        data={"planned_date": "2026-10-12", "planned_time": "13:30"},
+    )
+    client.post(
+        f"/trips/{trip_id}/places/{second_id}/notes",
+        data={"notes": "Bring ID; ask for patio, then film"},
+    )
+
+    resp = client.get(f"/trips/{trip_id}/itinerary.ics")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/calendar"
+    assert (
+        resp.headers["Content-Disposition"]
+        == f'attachment; filename="trip-{trip_id}-itinerary.ics"'
+    )
+
+    body = resp.get_data(as_text=True)
+    assert "BEGIN:VCALENDAR\r\n" in body
+    assert "VERSION:2.0\r\n" in body
+    assert body.count("BEGIN:VEVENT") == 2
+    assert "DTSTART;VALUE=DATE:20261011" in body
+    assert "DTSTART:20261012T133000" in body
+    assert "SUMMARY:Brewery\\, Taproom\\; East" in body
+    assert "LOCATION:123 Main St\\, Ithaca\\, NY\\, 14850" in body
+    assert "Bring ID\\; ask for patio\\, then film" in body
+    assert "Maps:" in body
+    assert "Unscheduled Calendar Stop" not in body
+
+
+def test_calendar_export_enforces_ownership(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "calendar-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Calendar"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Calendar").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "calendar-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    assert client.get(f"/trips/{trip_id}/itinerary.ics").status_code == 404
+
+
+def test_calendar_export_without_scheduled_stops_is_valid(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "calendar-empty@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "No Events"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="No Events").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    body = client.get(f"/trips/{trip_id}/itinerary.ics").get_data(as_text=True)
+    assert body.startswith("BEGIN:VCALENDAR\r\n")
+    assert body.endswith("END:VCALENDAR\r\n")
+    assert "BEGIN:VEVENT" not in body

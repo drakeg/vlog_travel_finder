@@ -205,23 +205,48 @@ Deferred:
 
 ### Sprint 5 — Printable itinerary export
 
-Status: In progress
+Status: Complete
 
 Planning issue: #122
 
-Current work:
+Shipped:
 
-- #123 — add a print-friendly itinerary view;
-- add a downloadable plain-text itinerary;
-- include trip dates/notes and stop schedule/notes/location details;
-- keep exports ownership-scoped;
-- keep editing controls out of the print view;
-- cover auth, ownership, representative content, and empty trips.
+- ownership-scoped print-friendly itinerary view;
+- downloadable plain-text itinerary;
+- shared grouping/order logic across editable and export views;
+- trip dates/notes and stop schedule/notes/location details in exports;
+- addresses and Google Maps URLs when available;
+- editing controls excluded from the print view;
+- auth, ownership, representative-content, and empty-trip regression coverage.
 
-Out of scope for Sprint 5:
+Deferred:
 
 - PDF generation;
-- calendar synchronization;
+- direct calendar synchronization;
+- route optimization;
+- shared or collaborative trips;
+- paid external services.
+
+### Sprint 6 — Calendar export
+
+Status: In progress
+
+Planning issue: #125
+
+Current work:
+
+- #126 — add an ownership-scoped iCalendar (.ics) export;
+- export one event per scheduled stop;
+- support both all-day and timed stop events;
+- include notes, location text, and Google Maps URLs;
+- safely escape iCalendar text;
+- omit unscheduled stops while keeping the calendar valid;
+- cover auth, ownership, formatting, escaping, and no-event trips.
+
+Out of scope for Sprint 6:
+
+- direct Google Calendar or Outlook synchronization;
+- reminders/notifications;
 - route optimization;
 - shared or collaborative trips;
 - paid external services.
