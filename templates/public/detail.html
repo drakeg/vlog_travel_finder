@@ -24,6 +24,23 @@
       {% if place.category_name %}
         <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis">{{ place.category_name }}</span>
       {% endif %}
+      {% if is_authenticated %}
+        {% if is_saved %}
+          <form method="post" action="{{ url_for('public.unsave_place', place_id=place.id) }}" class="mb-0">
+            <input type="hidden" name="next" value="{{ request.path }}" />
+            <button class="btn btn-outline-success" type="submit">
+              <i class="fa-solid fa-bookmark me-1"></i>Saved
+            </button>
+          </form>
+        {% else %}
+          <form method="post" action="{{ url_for('public.save_place', place_id=place.id) }}" class="mb-0">
+            <input type="hidden" name="next" value="{{ request.path }}" />
+            <button class="btn btn-outline-primary" type="submit">
+              <i class="fa-regular fa-bookmark me-1"></i>Save place
+            </button>
+          </form>
+        {% endif %}
+      {% endif %}
       {% if place.google_maps_url %}
         <a class="btn btn-primary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">
           <i class="fa-solid fa-map-location-dot me-1"></i>Open in Google Maps
