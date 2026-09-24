@@ -26,6 +26,17 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Sort place results by location, name, or newest additions
   - Open saved places in Google Maps using coordinates or address data
 
+## Development process
+
+Project development follows documented sprint, coding, testing, and contribution standards:
+
+- [Contributing](CONTRIBUTING.md)
+- [Sprint process](docs/SPRINTS.md)
+- [Coding standards](docs/CODING_STANDARDS.md)
+- [Testing and CI](docs/TESTING.md)
+
+Feature and bug work should be tracked in GitHub Issues, implemented in focused pull requests, and merged only after required CI is green. Tests and documentation are part of the definition of done.
+
 ## Docker Compose local development
 
 Docker Compose can run the app and the test suite without creating a host Python virtual environment.

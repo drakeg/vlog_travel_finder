@@ -1,0 +1,115 @@
+# Sprint Process
+
+## Purpose
+
+Sprints provide a lightweight planning and delivery boundary. The goal is traceability and predictable completion, not ceremony.
+
+Each sprint should answer:
+
+- What user or operator outcome are we delivering?
+- Which issues are in scope?
+- What must be true before work starts?
+- What tests and documentation are required?
+- What marks the sprint complete?
+
+## Sprint naming
+
+Use sequential names: `Sprint 1`, `Sprint 2`, and so on.
+
+For larger sprints, individual work items may optionally use `Sxx-Dyy` identifiers, for example `S03-D02`, when that improves tracking.
+
+Do not renumber historical work merely to fit the current process.
+
+## Retrospective baseline: Sprint 0
+
+The work merged immediately before formal sprint documentation is treated as **Sprint 0 — Baseline hardening and travel planning**.
+
+Representative completed work includes:
+
+- GitHub Actions pytest coverage on Python 3.12 and 3.13;
+- Google Maps links for places;
+- vlog-status filtering and result sorting;
+- Docker Compose local development and testing;
+- CSV export and import for place data;
+- member Saved Places;
+- private named trip lists.
+
+Sprint 0 establishes the technical and process baseline for subsequent numbered sprints.
+
+## Sprint planning
+
+A sprint should have a short planning issue or clearly identified parent issue containing:
+
+- sprint goal;
+- in-scope issues;
+- explicit out-of-scope items where ambiguity exists;
+- dependencies and prerequisites;
+- schema/migration expectations;
+- testing expectations;
+- documentation expectations;
+- security/authorization considerations;
+- deployment or external-service considerations.
+
+Keep the sprint small enough that all accepted work can be merged, tested, documented, and closed as a coherent unit.
+
+## Readiness gate
+
+Work is ready to enter a sprint when:
+
+- the problem and expected outcome are clear;
+- acceptance criteria are testable;
+- known dependencies are identified;
+- data migration needs are understood;
+- external services, credentials, cost, or infrastructure requirements are called out;
+- security-sensitive behavior has an explicit test plan;
+- there is no known blocker that makes implementation speculative.
+
+## During the sprint
+
+- Keep the issue tracker accurate as scope changes.
+- Prefer focused PRs that close one issue or one coherent slice of an issue.
+- Update tests and documentation in the same PR as behavior changes.
+- Fix CI regressions before beginning unrelated follow-on work.
+- Avoid silently expanding sprint scope. New ideas should become issues for a later sprint unless required to complete or safely operate current work.
+- Keep migrations forward-safe and non-destructive unless explicitly approved.
+
+## Definition of done for a work item
+
+A work item is done only when:
+
+- acceptance criteria are satisfied;
+- code is merged to `main`;
+- required CI is green;
+- tests cover the changed behavior and important failure/authorization paths;
+- documentation is updated;
+- database migrations are included and tested when applicable;
+- linked issues are closed or updated accurately;
+- no unresolved merge conflicts or known release-blocking regressions remain.
+
+## Definition of done for a sprint
+
+A sprint is complete when every committed item is either:
+
+1. merged and done under the criteria above; or
+2. explicitly moved out of the sprint with the tracker updated.
+
+The sprint closeout should record:
+
+- what shipped;
+- deferred items;
+- notable migration/configuration changes;
+- known follow-up work.
+
+Do not mark a sprint complete solely because code was written.
+
+## Maintenance work
+
+Small dependency updates, documentation corrections, and urgent production fixes do not need to wait for a sprint boundary. They still follow testing, review, and issue/PR hygiene rules.
+
+## Future sprint record
+
+Add concise sprint closeouts below this heading as formal sprints complete.
+
+### Sprint 1
+
+Not yet defined.
