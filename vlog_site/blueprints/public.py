@@ -86,12 +86,21 @@ def places() -> str:
     state = clean_str(request.args.get("state"))
     category_id_raw = clean_str(request.args.get("category_id"))
     vlog_status = clean_str(request.args.get("vlog_status"))
+    sort = clean_str(request.args.get("sort")) or "location"
     try:
         category_id = int(category_id_raw) if category_id_raw else None
     except ValueError:
         category_id = None
 
-    stmt = select(Place).order_by(text("COALESCE(state, ''), COALESCE(city, ''), name")).limit(200)
+    stmt = select(Place)
+    if sort == "name":
+        stmt = stmt.order_by(Place.name.asc(), text("COALESCE(state, '')"), text("COALESCE(city, '')"))
+    elif sort == "newest":
+        stmt = stmt.order_by(Place.created_at.desc(), Place.id.desc())
+    else:
+        sort = "location"
+        stmt = stmt.order_by(text("COALESCE(state, '')"), text("COALESCE(city, '')"), Place.name.asc())
+    stmt = stmt.limit(200)
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -136,6 +145,7 @@ def places() -> str:
         state=state or "",
         category_id=category_id or "",
         vlog_status=vlog_status or "",
+        sort=sort,
     )
 
 
