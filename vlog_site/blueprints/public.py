@@ -370,10 +370,32 @@ def trip_detail(trip_id: int) -> str:
             "notes": trip_place.notes,
             "planned_date": trip_place.planned_date,
             "planned_time": trip_place.planned_time,
+            "sequence": index,
         }
-        for place, trip_place in rows
+        for index, (place, trip_place) in enumerate(rows, start=1)
     ]
-    return render_template("public/trip_detail.html", trip=trip, stops=stops)
+
+    scheduled_by_date: dict[str, list[dict]] = {}
+    unscheduled_stops: list[dict] = []
+    for stop in stops:
+        planned_date = stop["planned_date"]
+        if planned_date:
+            scheduled_by_date.setdefault(planned_date, []).append(stop)
+        else:
+            unscheduled_stops.append(stop)
+
+    day_groups = [
+        {"date": planned_date, "stops": scheduled_by_date[planned_date]}
+        for planned_date in sorted(scheduled_by_date)
+    ]
+
+    return render_template(
+        "public/trip_detail.html",
+        trip=trip,
+        stops=stops,
+        day_groups=day_groups,
+        unscheduled_stops=unscheduled_stops,
+    )
 
 
 @public_bp.route("/trips/<int:trip_id>/update", methods=["POST"])
