@@ -33,6 +33,8 @@ def test_sqlite_schema_upgrade_runs(tmp_path, monkeypatch):
     assert "notes" in trip_columns
     assert "position" in trip_place_columns
     assert "notes" in trip_place_columns
+    assert "planned_date" in trip_place_columns
+    assert "planned_time" in trip_place_columns
     assert "start_date" in trip_columns
     assert "end_date" in trip_columns
     assert "position" not in saved_place_columns
