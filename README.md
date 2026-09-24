@@ -24,6 +24,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Registered users can organize destinations into private named trip lists
   - Trip lists support planning notes and explicit ordered stops
   - Trips can include start/end dates and per-stop planning notes
+  - Trip stops can be scheduled with an optional planned date and time
   - Filter destinations by whether they have already been featured in your vlog
   - Sort place results by location, name, or newest additions
   - Open saved places in Google Maps using coordinates or address data
