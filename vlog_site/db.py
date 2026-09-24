@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 9
+        latest_version = 10
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -426,6 +426,29 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 )
 
                 version = 9
+                _set_user_version(conn, version)
+                continue
+
+            if version == 9:
+                trip_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip)"))
+                    if r[1] is not None
+                }
+                if "start_date" not in trip_cols:
+                    conn.execute(text("ALTER TABLE trip ADD COLUMN start_date TEXT NULL"))
+                if "end_date" not in trip_cols:
+                    conn.execute(text("ALTER TABLE trip ADD COLUMN end_date TEXT NULL"))
+
+                trip_place_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip_place)"))
+                    if r[1] is not None
+                }
+                if "notes" not in trip_place_cols:
+                    conn.execute(text("ALTER TABLE trip_place ADD COLUMN notes TEXT NULL"))
+
+                version = 10
                 _set_user_version(conn, version)
                 continue
 
