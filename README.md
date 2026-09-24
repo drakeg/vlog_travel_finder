@@ -22,6 +22,69 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Sort place results by location, name, or newest additions
   - Open saved places in Google Maps using coordinates or address data
 
+## Docker Compose local development
+
+Docker Compose can run the app and the test suite without creating a host Python virtual environment.
+
+### Start the app
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- Public site: `http://127.0.0.1:5000/`
+- Login: `http://127.0.0.1:5000/login`
+- Admin: `http://127.0.0.1:5000/admin`
+
+The app stores its SQLite database and uploaded instance data in the named `vlog_instance` volume, so local data survives container recreation.
+
+### Run tests
+
+```bash
+docker compose run --rm test
+```
+
+This runs the same `python -m pytest -q` test command used by CI.
+
+### Database commands
+
+The app initializes and upgrades its SQLite schema automatically when it starts. You can also run the CLI commands explicitly:
+
+```bash
+docker compose run --rm app python -m flask --app vlog_site:create_app init-db
+docker compose run --rm app python -m flask --app vlog_site:create_app upgrade-db
+```
+
+### Create or promote an admin
+
+Create an admin interactively:
+
+```bash
+docker compose run --rm app python -m flask --app vlog_site:create_app create-admin
+```
+
+Or promote an existing account:
+
+```bash
+docker compose run --rm app python -m flask --app vlog_site:create_app promote-admin you@example.com
+```
+
+### Stop the app
+
+```bash
+docker compose down
+```
+
+To also remove the persisted local SQLite data, remove the named volume:
+
+```bash
+docker compose down -v
+```
+
+The virtualenv workflow below remains fully supported.
+
 ## Local setup
 
 ### 1) Create a virtualenv and install deps
