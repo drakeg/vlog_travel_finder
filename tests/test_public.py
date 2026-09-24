@@ -997,3 +997,135 @@ def test_stop_schedule_rejects_invalid_values_and_enforces_ownership(client, app
         ).status_code
         == 404
     )
+
+
+def test_trip_itinerary_groups_stops_by_day_and_preserves_manual_order(client, app, seeded_content):
+    first_place_id = seeded_content["place"].id
+
+    with app.app_context():
+        db = get_session(app)
+        second = Place(name="Second Day Stop", city="City Two", state="NY")
+        third = Place(name="Unscheduled Stop", city="City Three", state="PA")
+        db.add_all([second, third])
+        db.commit()
+        second_id = second.id
+        third_id = third.id
+
+    client.post(
+        "/register",
+        data={
+            "email": "dayview@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Grouped Trip",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-15",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Grouped Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_place_id, second_id, third_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    client.post(
+        f"/trips/{trip_id}/places/{first_place_id}/schedule",
+        data={"planned_date": "2026-10-12", "planned_time": "10:00"},
+    )
+    client.post(
+        f"/trips/{trip_id}/places/{second_id}/schedule",
+        data={"planned_date": "2026-10-11", "planned_time": "14:00"},
+    )
+
+    resp = client.get(f"/trips/{trip_id}")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+
+    # Day sections are chronological, even though manual stop order is unchanged.
+    assert body.index("2026-10-11") < body.index("2026-10-12") < body.index("Unscheduled")
+
+    # Manual sequence numbers remain tied to the overall trip order.
+    assert 'aria-label="Stop 1"' in body
+    assert 'aria-label="Stop 2"' in body
+    assert 'aria-label="Stop 3"' in body
+
+    # All existing controls remain available after grouping.
+    assert f"/trips/{trip_id}/places/{first_place_id}/move/up" in body
+    assert f"/trips/{trip_id}/places/{first_place_id}/schedule" in body
+    assert f"/trips/{trip_id}/places/{first_place_id}/notes" in body
+    assert f"/trips/{trip_id}/places/{first_place_id}/remove" in body
+
+
+def test_trip_itinerary_keeps_manual_order_within_same_day(client, app, seeded_content):
+    first_place_id = seeded_content["place"].id
+
+    with app.app_context():
+        db = get_session(app)
+        second = Place(name="Second Same Day Stop")
+        db.add(second)
+        db.commit()
+        second_id = second.id
+
+    client.post(
+        "/register",
+        data={
+            "email": "same-day@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Same Day Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Same Day Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{first_place_id}/add")
+    client.post(f"/trips/{trip_id}/places/{second_id}/add")
+    for place_id in [first_place_id, second_id]:
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/schedule",
+            data={"planned_date": "2026-10-12", "planned_time": ""},
+        )
+
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert body.index("Test Place") < body.index("Second Same Day Stop")
+
+
+def test_empty_trip_shows_itinerary_empty_state(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "empty-itinerary@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Empty Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Empty Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    resp = client.get(f"/trips/{trip_id}")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "No itinerary stops yet" in body
+    assert "Add places to this trip to start building the itinerary." in body

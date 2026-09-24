@@ -158,19 +158,42 @@ Deferred:
 
 ### Sprint 3 — Stop scheduling
 
-Status: In progress
+Status: Complete
 
 Planning issue: #116
 
+Shipped:
+
+- optional planned date/time on trip stops;
+- server-side date/time validation;
+- enforcement of configured trip date ranges;
+- ownership-scoped scheduling edits;
+- scheduled date/time display on ordered stops;
+- migration and regression coverage for scheduling behavior.
+
+Deferred:
+
+- automatic route optimization;
+- travel-time calculations;
+- calendar synchronization;
+- shared or collaborative trips;
+- paid external services.
+
+### Sprint 4 — Day-by-day itinerary view
+
+Status: In progress
+
+Planning issue: #119
+
 Current work:
 
-- #117 — add optional planned date/time to each trip stop;
-- validate ISO dates and times;
-- constrain stop dates to the trip date range when one is configured;
-- keep scheduling edits ownership-scoped;
-- cover schema, persistence, validation, and authorization in tests.
+- #120 — group scheduled stops under their planned dates;
+- sort day sections chronologically;
+- preserve manual stop order within each day;
+- keep unscheduled stops in a separate section;
+- retain all existing stop controls and empty-state behavior.
 
-Out of scope for Sprint 3:
+Out of scope for Sprint 4:
 
 - automatic route optimization;
 - travel-time calculations;
