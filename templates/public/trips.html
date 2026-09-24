@@ -8,12 +8,14 @@
       <h1 class="mb-1">Trips</h1>
       <div class="text-muted">Organize places into named trip lists.</div>
     </div>
-    <form method="post" action="{{ url_for('public.trips') }}" class="d-flex flex-column flex-md-row gap-2">
-      <input class="form-control" type="text" name="name" placeholder="New trip name" required />
-      <input class="form-control" type="text" name="notes" placeholder="Optional trip notes" />
-      <button class="btn btn-primary text-nowrap" type="submit">
+    <form method="post" action="{{ url_for('public.trips') }}" class="row g-2 align-items-end">
+      <div class="col-12 col-md-auto"><input class="form-control" type="text" name="name" placeholder="New trip name" required /></div>
+      <div class="col-12 col-md-auto"><input class="form-control" type="date" name="start_date" aria-label="Trip start date" /></div>
+      <div class="col-12 col-md-auto"><input class="form-control" type="date" name="end_date" aria-label="Trip end date" /></div>
+      <div class="col-12 col-md-auto"><input class="form-control" type="text" name="notes" placeholder="Optional trip notes" /></div>
+      <div class="col-12 col-md-auto"><button class="btn btn-primary text-nowrap" type="submit">
         <i class="fa-solid fa-plus me-1"></i>Create trip
-      </button>
+      </button></div>
     </form>
   </div>
 
@@ -27,6 +29,14 @@
               <div class="text-muted mb-2">
                 {{ trip_counts.get(trip.id, 0) }} place{% if trip_counts.get(trip.id, 0) != 1 %}s{% endif %}
               </div>
+              {% if trip.start_date or trip.end_date %}
+                <div class="small text-body-secondary mb-2">
+                  <i class="fa-regular fa-calendar me-1"></i>
+                  {% if trip.start_date %}{{ trip.start_date }}{% else %}TBD{% endif %}
+                  –
+                  {% if trip.end_date %}{{ trip.end_date }}{% else %}TBD{% endif %}
+                </div>
+              {% endif %}
               {% if trip.notes %}
                 <p class="text-body-secondary small mb-3">{{ trip.notes }}</p>
               {% endif %}

@@ -747,3 +747,143 @@ def test_trip_update_and_move_enforce_ownership(client, app, seeded_content):
         ).status_code
         == 404
     )
+
+
+def test_trip_dates_persist_and_validate_range(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "dates@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    resp = client.post(
+        "/trips",
+        data={
+            "name": "Dated Trip",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-15",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Dated Trip").first()
+        assert trip is not None
+        assert trip.start_date == "2026-10-10"
+        assert trip.end_date == "2026-10-15"
+        trip_id = trip.id
+
+    resp = client.post(
+        f"/trips/{trip_id}/update",
+        data={
+            "name": "Dated Trip",
+            "start_date": "2026-10-20",
+            "end_date": "2026-10-19",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Trip end date cannot be earlier than the start date" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.get(Trip, trip_id)
+        assert trip is not None
+        assert trip.start_date == "2026-10-10"
+        assert trip.end_date == "2026-10-15"
+
+
+def test_trip_rejects_invalid_iso_date(client, app):
+    client.post(
+        "/register",
+        data={
+            "email": "invalid-date@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    resp = client.post(
+        "/trips",
+        data={
+            "name": "Invalid Date Trip",
+            "start_date": "2026-02-30",
+            "end_date": "",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Trip dates must use a valid YYYY-MM-DD date" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(Trip).filter_by(name="Invalid Date Trip").first() is None
+
+
+def test_stop_notes_persist_and_enforce_trip_ownership(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={
+            "email": "stop-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Stop Notes Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Stop Notes Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    resp = client.post(
+        f"/trips/{trip_id}/places/{place_id}/notes",
+        data={"notes": "Arrive before 4 PM"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Arrive before 4 PM" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.notes == "Arrive before 4 PM"
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "stop-intruder@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    assert (
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/notes",
+            data={"notes": "Hijacked"},
+        ).status_code
+        == 404
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.notes == "Arrive before 4 PM"

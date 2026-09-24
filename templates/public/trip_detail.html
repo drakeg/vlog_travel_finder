@@ -28,7 +28,15 @@
           <label class="form-label" for="trip-name">Name</label>
           <input class="form-control" id="trip-name" type="text" name="name" value="{{ trip.name }}" required />
         </div>
-        <div class="col-12 col-md-8">
+        <div class="col-6 col-md-2">
+          <label class="form-label" for="trip-start-date">Start date</label>
+          <input class="form-control" id="trip-start-date" type="date" name="start_date" value="{{ trip.start_date or '' }}" />
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label" for="trip-end-date">End date</label>
+          <input class="form-control" id="trip-end-date" type="date" name="end_date" value="{{ trip.end_date or '' }}" />
+        </div>
+        <div class="col-12 col-md-4">
           <label class="form-label" for="trip-notes">Notes</label>
           <textarea class="form-control" id="trip-notes" name="notes" rows="2" placeholder="Campground, reservation, timing, or other trip notes">{{ trip.notes or "" }}</textarea>
         </div>
@@ -84,6 +92,14 @@
                 </form>
               </div>
             </div>
+
+            <form method="post" action="{{ url_for('public.trip_update_place_notes', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+              <label class="form-label small" for="stop-notes-{{ place.id }}">Stop notes</label>
+              <div class="input-group">
+                <input class="form-control" id="stop-notes-{{ place.id }}" type="text" name="notes" value="{{ stop.notes or '' }}" placeholder="Reservation, timing, parking, or other notes" />
+                <button class="btn btn-outline-secondary" type="submit">Save</button>
+              </div>
+            </form>
 
             <div class="pt-3 d-flex gap-2 flex-wrap">
               <a class="btn btn-sm btn-outline-primary" href="{{ url_for('public.place_detail', place_id=place.id) }}">View details</a>
