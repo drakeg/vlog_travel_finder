@@ -9,6 +9,9 @@
       <div class="text-muted">Create and manage your travel stops and vlog links.</div>
     </div>
     <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_places_export') }}">
+        <i class="fa-solid fa-file-csv me-1"></i>Export CSV
+      </a>
       <a class="btn btn-primary" href="{{ url_for('admin.admin_place_new') }}">
         <i class="fa-solid fa-plus me-1"></i>New place
       </a>

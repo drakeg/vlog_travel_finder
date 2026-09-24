@@ -3,7 +3,7 @@ import io
 from werkzeug.security import check_password_hash
 
 from vlog_site.db import get_session
-from vlog_site.models import BlogPost, ContactMessage, PageView, User
+from vlog_site.models import BlogPost, ContactMessage, PageView, Place, User
 from vlog_site.services.settings_service import get_setting, set_setting
 
 
@@ -218,3 +218,37 @@ def test_admin_dashboard_shows_counts(client, app, admin_password):
     with app.app_context():
         db = get_session(app)
         assert db.query(PageView).count() >= 1
+
+
+def test_admin_places_export_requires_login(client):
+    resp = client.get("/admin/places/export.csv")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers.get("Location", "")
+
+
+def test_admin_places_export_csv(client, app, seeded_content, admin_password):
+    _login(client, admin_password)
+
+    with app.app_context():
+        db = get_session(app)
+        place = db.query(Place).filter_by(name="Test Place").first()
+        assert place is not None
+        place.address = "123 Main St"
+        place.zipcode = "12345"
+        place.notes = 'Great stop, with "quoted" notes\nand a second line'
+        place.vlog_youtube_url = "https://www.youtube.com/watch?v=test"
+        db.commit()
+
+    resp = client.get("/admin/places/export.csv")
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/csv"
+    assert "attachment; filename=places.csv" in resp.headers.get("Content-Disposition", "")
+
+    body = resp.get_data(as_text=True)
+    assert "id,name,category,address,city,state,zipcode,latitude,longitude" in body
+    assert "Test Place" in body
+    assert "Museums" in body
+    assert "123 Main St" in body
+    assert "https://www.youtube.com/watch?v=test" in body
+    assert 'Great stop, with ""quoted"" notes' in body
+    assert "and a second line" in body

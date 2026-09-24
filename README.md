@@ -14,6 +14,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Anonymous preview mode (admins can simulate logged-out access)
   - Manage categories
   - Create / edit / delete places
+  - Export all place data to CSV for backup or spreadsheet review
   - Manage blog posts
   - View contact messages
 - **Public**

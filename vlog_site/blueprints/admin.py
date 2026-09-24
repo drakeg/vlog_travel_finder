@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import csv
 import functools
+import io
 import os
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, session, url_for
 from sqlalchemy import func, select, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -115,6 +117,79 @@ def admin_places() -> str:
     ]
 
     return render_template("admin/places.html", places=places)
+
+
+@admin_bp.route("/places/export.csv")
+@admin_required
+def admin_places_export() -> Response:
+    db = get_session(current_app)
+    places = (
+        db.execute(
+            select(Place)
+            .order_by(text("COALESCE(state, ''), COALESCE(city, ''), name"), Place.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "name",
+            "category",
+            "address",
+            "city",
+            "state",
+            "zipcode",
+            "latitude",
+            "longitude",
+            "venue_website_url",
+            "venue_youtube_url",
+            "venue_tiktok_url",
+            "venue_instagram_url",
+            "venue_facebook_url",
+            "vlog_youtube_url",
+            "vlog_tiktok_url",
+            "vlog_instagram_url",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+    )
+
+    for place in places:
+        writer.writerow(
+            [
+                place.id,
+                place.name,
+                place.category_name or "",
+                place.address or "",
+                place.city or "",
+                place.state or "",
+                place.zipcode or "",
+                "" if place.latitude is None else place.latitude,
+                "" if place.longitude is None else place.longitude,
+                place.venue_website_url or "",
+                place.venue_youtube_url or "",
+                place.venue_tiktok_url or "",
+                place.venue_instagram_url or "",
+                place.venue_facebook_url or "",
+                place.vlog_youtube_url or "",
+                place.vlog_tiktok_url or "",
+                place.vlog_instagram_url or "",
+                place.notes or "",
+                place.created_at,
+                place.updated_at,
+            ]
+        )
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=places.csv"},
+    )
 
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
