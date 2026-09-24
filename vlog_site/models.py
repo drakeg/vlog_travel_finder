@@ -68,6 +68,31 @@ class SavedPlace(Base):
     )
 
 
+class Trip(Base):
+    __tablename__ = "trip"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
+class TripPlace(Base):
+    __tablename__ = "trip_place"
+
+    trip_id: Mapped[int] = mapped_column(ForeignKey("trip.id"), primary_key=True)
+    place_id: Mapped[int] = mapped_column(ForeignKey("place.id"), primary_key=True)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 class AccessRule(Base):
     __tablename__ = "access_rule"
 

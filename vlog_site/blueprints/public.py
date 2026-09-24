@@ -8,7 +8,7 @@ from sqlalchemy import or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
-from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace
+from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace, Trip, TripPlace
 from ..services.mail_service import send_contact_email_if_configured
 from ..services.markdown_service import render_markdown
 from ..services.settings_service import get_setting
@@ -179,7 +179,24 @@ def place_detail(place_id: int) -> str:
     if user_id is not None and not session.get("anonymous_preview"):
         is_saved = db.get(SavedPlace, (user_id, place_id)) is not None
 
-    return render_template("public/detail.html", place=place, is_saved=is_saved)
+    user_trips = []
+    if user_id is not None and not session.get("anonymous_preview"):
+        user_trips = (
+            db.execute(
+                select(Trip)
+                .where(Trip.user_id == user_id)
+                .order_by(Trip.created_at.desc(), Trip.id.desc())
+            )
+            .scalars()
+            .all()
+        )
+
+    return render_template(
+        "public/detail.html",
+        place=place,
+        is_saved=is_saved,
+        user_trips=user_trips,
+    )
 
 
 @public_bp.route("/saved")
@@ -231,6 +248,117 @@ def unsave_place(place_id: int):
 
     next_url = _safe_local_next(request.form.get("next"), url_for("public.saved_places"))
     return redirect(next_url)
+
+
+def _current_user_trip_or_404(db, trip_id: int) -> Trip:
+    user_id = int(session["user_id"])
+    trip = (
+        db.execute(
+            select(Trip).where(Trip.id == trip_id, Trip.user_id == user_id)
+        )
+        .scalars()
+        .first()
+    )
+    if trip is None:
+        abort(404)
+    return trip
+
+
+@public_bp.route("/trips", methods=["GET", "POST"])
+@login_required
+def trips() -> str:
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+
+    if request.method == "POST":
+        name = clean_str(request.form.get("name"))
+        if not name:
+            flash("Trip name is required", "error")
+        else:
+            db.add(Trip(user_id=user_id, name=name))
+            db.commit()
+            flash("Trip created", "info")
+            return redirect(url_for("public.trips"))
+
+    trips = (
+        db.execute(
+            select(Trip)
+            .where(Trip.user_id == user_id)
+            .order_by(Trip.created_at.desc(), Trip.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    counts = dict(
+        db.execute(
+            select(TripPlace.trip_id, text("COUNT(1)"))
+            .join(Trip, Trip.id == TripPlace.trip_id)
+            .where(Trip.user_id == user_id)
+            .group_by(TripPlace.trip_id)
+        ).all()
+    )
+    return render_template("public/trips.html", trips=trips, trip_counts=counts)
+
+
+@public_bp.route("/trips/<int:trip_id>")
+@login_required
+def trip_detail(trip_id: int) -> str:
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    places = (
+        db.execute(
+            select(Place)
+            .join(TripPlace, TripPlace.place_id == Place.id)
+            .where(TripPlace.trip_id == trip.id)
+            .order_by(TripPlace.created_at.asc(), Place.name.asc())
+        )
+        .scalars()
+        .all()
+    )
+    return render_template("public/trip_detail.html", trip=trip, places=places)
+
+
+@public_bp.route("/trips/<int:trip_id>/delete", methods=["POST"])
+@login_required
+def trip_delete(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    db.delete(trip)
+    db.commit()
+    flash("Trip deleted", "info")
+    return redirect(url_for("public.trips"))
+
+
+@public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/add", methods=["POST"])
+@login_required
+def trip_add_place(trip_id: int, place_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    if db.get(Place, place_id) is None:
+        abort(404)
+
+    if db.get(TripPlace, (trip.id, place_id)) is None:
+        db.add(TripPlace(trip_id=trip.id, place_id=place_id))
+        db.commit()
+
+    next_url = _safe_local_next(
+        request.form.get("next"),
+        url_for("public.trip_detail", trip_id=trip.id),
+    )
+    return redirect(next_url)
+
+
+@public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/remove", methods=["POST"])
+@login_required
+def trip_remove_place(trip_id: int, place_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    row = db.get(TripPlace, (trip.id, place_id))
+    if row is not None:
+        db.delete(row)
+        db.commit()
+
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
 @public_bp.route("/blog")
