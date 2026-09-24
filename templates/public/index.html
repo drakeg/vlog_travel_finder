@@ -13,7 +13,7 @@
   <div class="card shadow-sm mb-4" data-aos="fade-up" data-aos-delay="50">
     <div class="card-body">
       <form method="get" action="{{ url_for('public.places') }}" class="row g-3">
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-2">
           <label for="q" class="form-label">Search</label>
           <div class="input-group">
             <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
@@ -47,6 +47,15 @@
             <option value="">Any</option>
             <option value="featured" {% if vlog_status == "featured" %}selected{% endif %}>Featured in our vlog</option>
             <option value="planned" {% if vlog_status == "planned" %}selected{% endif %}>Not featured yet</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-2">
+          <label for="sort" class="form-label">Sort by</label>
+          <select class="form-select" id="sort" name="sort">
+            <option value="location" {% if sort == "location" %}selected{% endif %}>Location</option>
+            <option value="name" {% if sort == "name" %}selected{% endif %}>Name</option>
+            <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest</option>
           </select>
         </div>
 
