@@ -15,6 +15,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Manage categories
   - Create / edit / delete places
   - Export all place data to CSV for backup or spreadsheet review
+  - Import exported-format CSV files to restore, bulk-create, or bulk-update places
   - Manage blog posts
   - View contact messages
 - **Public**
