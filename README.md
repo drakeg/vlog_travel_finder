@@ -28,6 +28,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
   - Existing trips can be duplicated as independent editable copies
+  - Saved places can be added to trips individually or in bulk
   - Filter destinations by whether they have already been featured in your vlog
   - Sort place results by location, name, or newest additions
   - Open saved places in Google Maps using coordinates or address data

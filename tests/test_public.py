@@ -1543,3 +1543,157 @@ def test_trip_duplicate_handles_empty_trip(client, app):
             db.query(TripPlace).filter_by(trip_id=duplicate.id).count()
             == 0
         )
+
+
+def test_saved_place_can_be_added_to_owned_trip(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "saved-single@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(f"/places/{place_id}/save")
+    client.post("/trips", data={"name": "Saved Single Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Saved Single Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    resp = client.post(
+        "/saved/add-to-trip",
+        data={"trip_id": str(trip_id), "place_ids": str(place_id)},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Added 1 saved place to Saved Single Trip" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.position == 1
+
+
+def test_saved_places_bulk_add_appends_and_skips_duplicates(client, app, seeded_content):
+    first_id = seeded_content["place"].id
+    with app.app_context():
+        db = get_session(app)
+        second = Place(name="Bulk Second")
+        third = Place(name="Bulk Third")
+        db.add_all([second, third])
+        db.commit()
+        second_id = second.id
+        third_id = third.id
+
+    client.post(
+        "/register",
+        data={
+            "email": "saved-bulk@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    for place_id in [first_id, second_id, third_id]:
+        client.post(f"/places/{place_id}/save")
+
+    client.post("/trips", data={"name": "Bulk Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Bulk Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{first_id}/add")
+
+    resp = client.post(
+        "/saved/add-to-trip",
+        data={
+            "trip_id": str(trip_id),
+            "place_ids": [str(first_id), str(second_id), str(third_id)],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Added 2 saved places to Bulk Trip" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        rows = (
+            db.query(TripPlace)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripPlace.position.asc())
+            .all()
+        )
+        assert [row.place_id for row in rows] == [first_id, second_id, third_id]
+        assert [row.position for row in rows] == [1, 2, 3]
+
+
+def test_saved_places_bulk_add_rejects_other_users_trip(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={
+            "email": "saved-owner@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owner Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={
+            "email": "saved-other@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(f"/places/{place_id}/save")
+
+    assert (
+        client.post(
+            "/saved/add-to-trip",
+            data={"trip_id": str(trip_id), "place_ids": str(place_id)},
+        ).status_code
+        == 404
+    )
+
+
+def test_saved_places_page_shows_trip_controls_or_create_trip_hint(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "saved-ui@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+    client.post(f"/places/{place_id}/save")
+
+    body = client.get("/saved").get_data(as_text=True)
+    assert "Create a trip first to add saved places directly to an itinerary." in body
+    assert 'form="saved-bulk-trip-form"' not in body
+
+    client.post("/trips", data={"name": "UI Trip"}, follow_redirects=True)
+    body = client.get("/saved").get_data(as_text=True)
+    assert "Add selected places to trip" in body
+    assert "UI Trip" in body
+    assert 'form="saved-bulk-trip-form"' in body

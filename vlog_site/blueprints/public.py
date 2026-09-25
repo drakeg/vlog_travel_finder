@@ -261,7 +261,92 @@ def saved_places() -> str:
         .scalars()
         .all()
     )
-    return render_template("public/saved.html", places=places)
+    trips = (
+        db.execute(
+            select(Trip)
+            .where(Trip.user_id == user_id)
+            .order_by(Trip.created_at.desc(), Trip.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return render_template("public/saved.html", places=places, trips=trips)
+
+
+@public_bp.route("/saved/add-to-trip", methods=["POST"])
+@login_required
+def saved_add_to_trip():
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+
+    try:
+        trip_id = int(request.form.get("trip_id", ""))
+    except ValueError:
+        abort(404)
+
+    trip = (
+        db.execute(
+            select(Trip).where(Trip.id == trip_id, Trip.user_id == user_id)
+        )
+        .scalars()
+        .first()
+    )
+    if trip is None:
+        abort(404)
+
+    selected_ids: list[int] = []
+    for raw in request.form.getlist("place_ids"):
+        try:
+            place_id = int(raw)
+        except ValueError:
+            continue
+        if place_id not in selected_ids:
+            selected_ids.append(place_id)
+
+    if not selected_ids:
+        flash("Select at least one saved place", "error")
+        return redirect(url_for("public.saved_places"))
+
+    saved_ids = set(
+        db.execute(
+            select(SavedPlace.place_id).where(
+                SavedPlace.user_id == user_id,
+                SavedPlace.place_id.in_(selected_ids),
+            )
+        ).scalars().all()
+    )
+
+    existing_place_ids = set(
+        db.execute(
+            select(TripPlace.place_id).where(TripPlace.trip_id == trip.id)
+        ).scalars().all()
+    )
+    positions = db.execute(
+        select(TripPlace.position).where(TripPlace.trip_id == trip.id)
+    ).scalars().all()
+    next_position = max(positions, default=0) + 1
+
+    added = 0
+    for place_id in selected_ids:
+        if place_id not in saved_ids or place_id in existing_place_ids:
+            continue
+        db.add(
+            TripPlace(
+                trip_id=trip.id,
+                place_id=place_id,
+                position=next_position,
+            )
+        )
+        next_position += 1
+        added += 1
+
+    if added:
+        db.commit()
+        flash(f"Added {added} saved place{'s' if added != 1 else ''} to {trip.name}", "info")
+    else:
+        flash("No new saved places were added", "info")
+
+    return redirect(url_for("public.saved_places"))
 
 
 @public_bp.route("/places/<int:place_id>/save", methods=["POST"])

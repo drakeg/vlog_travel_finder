@@ -254,23 +254,46 @@ Deferred:
 
 ### Sprint 7 — Trip duplication
 
-Status: In progress
+Status: Complete
 
 Planning issue: #128
 
-Current work:
+Shipped:
 
-- #129 — add ownership-scoped trip duplication;
-- copy trip metadata and all stop memberships;
-- preserve stop order, notes, schedules, and dates;
-- give copies a distinguishable default name;
-- keep source and copy independent;
-- cover populated trips, empty trips, independence, and cross-user denial.
+- ownership-scoped trip duplication;
+- copied trip metadata and all stop memberships;
+- preserved stop order, notes, schedules, and dates;
+- clear "(Copy)" default naming;
+- independent source and duplicate records;
+- populated-trip, empty-trip, independence, and cross-user regression coverage.
 
-Out of scope for Sprint 7:
+Deferred:
 
 - shared templates across users;
 - public trip templates;
 - automatic date shifting;
 - route optimization;
+- paid external services.
+
+### Sprint 8 — Saved places to trips
+
+Status: In progress
+
+Planning issue: #131
+
+Current work:
+
+- #132 — show owned trips on Saved Places;
+- add one saved place directly to a selected trip;
+- bulk-add multiple saved places to one trip;
+- append new memberships after existing stops;
+- skip existing memberships without duplication;
+- enforce trip ownership;
+- cover single add, bulk add, ordering, duplicates, ownership, and empty states.
+
+Out of scope for Sprint 8:
+
+- drag-and-drop trip building;
+- shared or collaborative trips;
+- automatic route optimization;
 - paid external services.

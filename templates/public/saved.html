@@ -14,10 +14,52 @@
   </div>
 
   {% if places %}
+    {% if trips %}
+      <form id="saved-bulk-trip-form" method="post" action="{{ url_for('public.saved_add_to_trip') }}" class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="bulk-trip-id">Add selected places to trip</label>
+              <select class="form-select" id="bulk-trip-id" name="trip_id" required>
+                <option value="">Choose a trip</option>
+                {% for trip in trips %}
+                  <option value="{{ trip.id }}">{{ trip.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-auto">
+              <button class="btn btn-primary" type="submit">
+                <i class="fa-solid fa-plus me-1"></i>Add selected
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    {% else %}
+      <div class="alert alert-secondary" role="alert">
+        Create a trip first to add saved places directly to an itinerary.
+      </div>
+    {% endif %}
+
     <div class="row g-3">
       {% for place in places %}
         <div class="col-12 col-lg-6">
           <div class="card shadow-sm h-100">
+            {% if trips %}
+              <div class="card-header bg-transparent">
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="place_ids"
+                    value="{{ place.id }}"
+                    id="saved-place-{{ place.id }}"
+                    form="saved-bulk-trip-form"
+                  />
+                  <label class="form-check-label" for="saved-place-{{ place.id }}">Select for trip</label>
+                </div>
+              </div>
+            {% endif %}
             <div class="card-body d-flex flex-column">
               <div class="d-flex align-items-start justify-content-between gap-3">
                 <div>
@@ -36,6 +78,22 @@
                   </button>
                 </form>
               </div>
+
+              {% if trips %}
+                <form method="post" action="{{ url_for('public.saved_add_to_trip') }}" class="mt-3">
+                  <input type="hidden" name="place_ids" value="{{ place.id }}" />
+                  <div class="input-group input-group-sm">
+                    <select class="form-select" name="trip_id" aria-label="Trip for {{ place.name }}" required>
+                      <option value="">Add to trip…</option>
+                      {% for trip in trips %}
+                        <option value="{{ trip.id }}">{{ trip.name }}</option>
+                      {% endfor %}
+                    </select>
+                    <button class="btn btn-outline-secondary" type="submit">Add</button>
+                  </div>
+                </form>
+              {% endif %}
+
               <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
                 <a class="btn btn-sm btn-outline-primary" href="{{ url_for('public.place_detail', place_id=place.id) }}">View details</a>
                 {% if place.google_maps_url %}
