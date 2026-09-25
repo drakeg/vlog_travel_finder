@@ -4,7 +4,7 @@ import io
 from werkzeug.security import check_password_hash
 
 from vlog_site.db import get_session
-from vlog_site.models import BlogPost, ContactMessage, PageView, Place, User
+from vlog_site.models import BlogPost, ContactMessage, PageView, Place, Trip, User
 from vlog_site.services.settings_service import get_setting, set_setting
 
 
