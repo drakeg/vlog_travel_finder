@@ -181,6 +181,7 @@ As an admin, configure anonymous access for each feature:
 
 - Admin page: `http://127.0.0.1:5000/admin/access-control`
 - Use **Preview as anonymous** in the navbar to simulate logged-out access without logging out.
+- While preview is active, member-only pages and actions are treated as unauthenticated; the admin can still use **Stop preview** to return to the authenticated session.
 
 ## Configuration
 
