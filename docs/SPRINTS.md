@@ -277,23 +277,45 @@ Deferred:
 
 ### Sprint 8 — Saved places to trips
 
-Status: In progress
+Status: Complete
 
 Planning issue: #131
 
-Current work:
+Shipped:
 
-- #132 — show owned trips on Saved Places;
-- add one saved place directly to a selected trip;
-- bulk-add multiple saved places to one trip;
-- append new memberships after existing stops;
-- skip existing memberships without duplication;
-- enforce trip ownership;
-- cover single add, bulk add, ordering, duplicates, ownership, and empty states.
+- owned-trip selection on Saved Places;
+- single-place add-to-trip workflow;
+- bulk saved-place add-to-trip workflow;
+- append-after-existing-stop ordering;
+- duplicate membership skipping;
+- ownership enforcement;
+- regression coverage for single add, bulk add, ordering, duplicates, ownership, and empty states.
 
-Out of scope for Sprint 8:
+Deferred:
 
 - drag-and-drop trip building;
 - shared or collaborative trips;
 - automatic route optimization;
 - paid external services.
+
+### Sprint 9 — Anonymous preview authorization hardening
+
+Status: In progress
+
+Planning issue: #135
+
+Current work:
+
+- #136 — treat anonymous-preview sessions as unauthenticated for member-only routes;
+- block private Saved Places and Trips GET routes during preview;
+- block member-only POST mutations and exports during preview;
+- preserve the admin-only Stop Preview action;
+- keep normal authenticated behavior unchanged;
+- add representative GET/POST and preview-exit regression coverage.
+
+Out of scope for Sprint 9:
+
+- CSRF protection;
+- session backend replacement;
+- role-system redesign;
+- shared or collaborative trips.
