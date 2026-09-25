@@ -14,10 +14,37 @@
   </div>
 
   {% if places %}
-    <div class="row g-3">
+    {% if trips %}
+      <form method="post" action="{{ url_for('public.saved_add_to_trip') }}" class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="bulk-trip-id">Add selected places to trip</label>
+              <select class="form-select" id="bulk-trip-id" name="trip_id" required>
+                <option value="">Choose a trip</option>
+                {% for trip in trips %}
+                  <option value="{{ trip.id }}">{{ trip.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-auto">
+              <button class="btn btn-primary" type="submit">
+                <i class="fa-solid fa-plus me-1"></i>Add selected
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 p-3 pt-0">
       {% for place in places %}
         <div class="col-12 col-lg-6">
           <div class="card shadow-sm h-100">
+            <div class="card-header bg-transparent">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="place_ids" value="{{ place.id }}" id="saved-place-{{ place.id }}" />
+                <label class="form-check-label" for="saved-place-{{ place.id }}">Select for trip</label>
+              </div>
+            </div>
             <div class="card-body d-flex flex-column">
               <div class="d-flex align-items-start justify-content-between gap-3">
                 <div>
@@ -46,7 +73,46 @@
           </div>
         </div>
       {% endfor %}
-    </div>
+        </div>
+      </form>
+    {% else %}
+      <div class="alert alert-secondary" role="alert">
+        Create a trip first to add saved places directly to an itinerary.
+      </div>
+      <div class="row g-3">
+        {% for place in places %}
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-start justify-content-between gap-3">
+                  <div>
+                    <a class="h5 text-decoration-none" href="{{ url_for('public.place_detail', place_id=place.id) }}">{{ place.name }}</a>
+                    <div class="text-muted">
+                      {% if place.city %}{{ place.city }}{% endif %}{% if place.city and place.state %}, {% endif %}{% if place.state %}{{ place.state }}{% endif %}
+                    </div>
+                    {% if place.category_name %}
+                      <span class="badge text-bg-primary-subtle border border-primary-subtle text-primary-emphasis mt-2">{{ place.category_name }}</span>
+                    {% endif %}
+                  </div>
+                  <form method="post" action="{{ url_for('public.unsave_place', place_id=place.id) }}" class="mb-0">
+                    <input type="hidden" name="next" value="{{ url_for('public.saved_places') }}" />
+                    <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove from saved places">
+                      <i class="fa-solid fa-bookmark"></i>
+                    </button>
+                  </form>
+                </div>
+                <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('public.place_detail', place_id=place.id) }}">View details</a>
+                  {% if place.google_maps_url %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{{ place.google_maps_url }}" target="_blank" rel="noreferrer">Open in Maps</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   {% else %}
     <div class="card shadow-sm">
       <div class="card-body">
