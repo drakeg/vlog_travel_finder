@@ -4,7 +4,7 @@ import io
 from werkzeug.security import check_password_hash
 
 from vlog_site.db import get_session
-from vlog_site.models import BlogPost, ContactMessage, PageView, Place, User
+from vlog_site.models import BlogPost, ContactMessage, PageView, Place, Trip, User
 from vlog_site.services.settings_service import get_setting, set_setting
 
 
@@ -407,3 +407,74 @@ def test_admin_places_import_rejects_missing_required_columns(client, admin_pass
     )
     assert resp.status_code == 200
     assert "CSV is missing required columns" in resp.get_data(as_text=True)
+
+
+def test_anonymous_preview_blocks_member_routes_and_can_exit(
+    client, app, seeded_content, admin_password
+):
+    _login(client, admin_password)
+    place_id = seeded_content["place"].id
+
+    client.post("/trips", data={"name": "Preview Private Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Preview Private Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    # Enter preview through the real admin action so the admin identity stays
+    # in session while public/member authorization treats the request as anonymous.
+    resp = client.post("/admin/preview/anonymous", follow_redirects=False)
+    assert resp.status_code == 302
+
+    private_gets = [
+        "/saved",
+        "/trips",
+        f"/trips/{trip_id}",
+        f"/trips/{trip_id}/print",
+        f"/trips/{trip_id}/itinerary.txt",
+        f"/trips/{trip_id}/itinerary.ics",
+    ]
+    for path in private_gets:
+        resp = client.get(path)
+        assert resp.status_code == 302
+        assert "/login" in resp.headers.get("Location", "")
+
+    private_posts = [
+        (f"/places/{place_id}/save", {}),
+        (f"/places/{place_id}/unsave", {}),
+        ("/saved/add-to-trip", {"trip_id": str(trip_id), "place_ids": str(place_id)}),
+        (f"/trips/{trip_id}/duplicate", {}),
+        (f"/trips/{trip_id}/delete", {}),
+        (f"/trips/{trip_id}/places/{place_id}/add", {}),
+    ]
+    for path, data in private_posts:
+        resp = client.post(path, data=data)
+        assert resp.status_code == 302
+        assert "/login" in resp.headers.get("Location", "")
+
+    # The admin control used to leave preview must remain available.
+    resp = client.post("/admin/preview/stop", follow_redirects=False)
+    assert resp.status_code == 302
+
+    # After leaving preview, the same authenticated admin can reach member pages.
+    assert client.get("/trips").status_code == 200
+
+
+def test_anonymous_preview_does_not_change_normal_authenticated_member_access(
+    client, seeded_content
+):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={
+            "email": "preview-normal-member@example.com",
+            "password": "pw123456",
+            "confirm": "pw123456",
+        },
+        follow_redirects=True,
+    )
+
+    assert client.get("/saved").status_code == 200
+    assert client.get("/trips").status_code == 200
+    assert client.post(f"/places/{place_id}/save").status_code == 302

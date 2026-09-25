@@ -25,7 +25,7 @@ def _is_safe_next_url(next_url: str | None) -> bool:
 def login_required(view):
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
-        if session.get("user_id") is None:
+        if session.get("user_id") is None or session.get("anonymous_preview"):
             next_url = request.full_path if request.query_string else request.path
             return redirect(url_for("auth.login", next=next_url))
         return view(*args, **kwargs)
