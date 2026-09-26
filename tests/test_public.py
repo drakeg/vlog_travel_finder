@@ -1731,8 +1731,8 @@ def test_finder_pagination_stable_on_tied_sort_values(client, app):
     assert first.status_code == second.status_code == 200
     # IDs in detail links distinguish otherwise identical names.
     import re
-    ids1 = set(re.findall(r'/places/(\\d+)', first.get_data(as_text=True)))
-    ids2 = set(re.findall(r'/places/(\\d+)', second.get_data(as_text=True)))
+    ids1 = set(re.findall(r'/places/(\d+)', first.get_data(as_text=True)))
+    ids2 = set(re.findall(r'/places/(\d+)', second.get_data(as_text=True)))
     assert len(ids1) == 24
     assert len(ids2) == 6
     assert ids1.isdisjoint(ids2)
