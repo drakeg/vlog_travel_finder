@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timezone
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
-from sqlalchemy import or_, select, text
+from sqlalchemy import func, or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
@@ -146,15 +146,15 @@ def places() -> str:
     except ValueError:
         category_id = None
 
+    # Apply filters before counting/paginating; always tie-break on the ID.
     stmt = select(Place)
     if sort == "name":
-        stmt = stmt.order_by(Place.name.asc(), text("COALESCE(state, '')"), text("COALESCE(city, '')"))
+        ordering = (Place.name.asc(), text("COALESCE(state, '')"), text("COALESCE(city, '')"), Place.id.asc())
     elif sort == "newest":
-        stmt = stmt.order_by(Place.created_at.desc(), Place.id.desc())
+        ordering = (Place.created_at.desc(), Place.id.desc())
     else:
         sort = "location"
-        stmt = stmt.order_by(text("COALESCE(state, '')"), text("COALESCE(city, '')"), Place.name.asc())
-    stmt = stmt.limit(200)
+        ordering = (text("COALESCE(state, '')"), text("COALESCE(city, '')"), Place.name.asc(), Place.id.asc())
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -187,7 +187,19 @@ def places() -> str:
             Place.vlog_instagram_url.is_(None),
         )
 
-    places = db.execute(stmt).scalars().all()
+    page_size = 24
+    total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
+    page_count = max(1, (total + page_size - 1) // page_size)
+    try:
+        requested_page = int(request.args.get("page", "1"))
+    except (ValueError, TypeError):
+        requested_page = 1
+    page = min(max(requested_page, 1), page_count)
+    places = db.execute(
+        stmt.order_by(*ordering).limit(page_size).offset((page - 1) * page_size)
+    ).scalars().all()
+    first_result = (page - 1) * page_size + 1 if total else 0
+    last_result = min(page * page_size, total)
     categories = db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
 
     saved_place_ids: set[int] = set()
@@ -195,7 +207,10 @@ def places() -> str:
     if user_id is not None and not session.get("anonymous_preview"):
         saved_place_ids = set(
             db.execute(
-                select(SavedPlace.place_id).where(SavedPlace.user_id == user_id)
+                select(SavedPlace.place_id).where(
+                    SavedPlace.user_id == user_id,
+                    SavedPlace.place_id.in_([place.id for place in places]),
+                )
             ).scalars().all()
         )
 
@@ -210,6 +225,16 @@ def places() -> str:
         vlog_status=vlog_status or "",
         sort=sort,
         saved_place_ids=saved_place_ids,
+        page=page,
+        page_count=page_count,
+        total=total,
+        first_result=first_result,
+        last_result=last_result,
+        page_args={
+            "q": q or "", "city": city or "", "state": state or "",
+            "category_id": category_id or "", "vlog_status": vlog_status or "",
+            "sort": sort,
+        },
     )
 
 
