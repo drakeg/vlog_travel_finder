@@ -90,12 +90,14 @@
               {% if is_admin %}
                 {% if is_anonymous_preview %}
                   <form method="post" action="{{ url_for('admin.admin_preview_stop') }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                     <button type="submit" class="btn btn-warning btn-sm btn-pill">
                       <i class="fa-solid fa-eye-slash me-1"></i><span class="btn-label">Exit preview</span>
                     </button>
                   </form>
                 {% else %}
                   <form method="post" action="{{ url_for('admin.admin_preview_anonymous') }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                     <button type="submit" class="btn btn-outline-warning btn-sm btn-pill">
                       <i class="fa-solid fa-eye me-1"></i><span class="btn-label">Preview</span>
                     </button>
@@ -111,6 +113,7 @@
                   <i class="fa-solid fa-route me-1"></i><span class="btn-label">Trips</span>
                 </a>
                 <form method="post" action="{{ url_for('auth.logout') }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                   <button type="submit" class="btn btn-outline-secondary btn-sm btn-pill">
                     <i class="fa-solid fa-right-from-bracket me-1"></i><span class="btn-label">Logout</span>
                   </button>
