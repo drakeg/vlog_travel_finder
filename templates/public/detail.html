@@ -27,6 +27,7 @@
       {% if is_authenticated %}
         {% if is_saved %}
           <form method="post" action="{{ url_for('public.unsave_place', place_id=place.id) }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="next" value="{{ request.path }}" />
             <button class="btn btn-outline-success" type="submit">
               <i class="fa-solid fa-bookmark me-1"></i>Saved
@@ -34,6 +35,7 @@
           </form>
         {% else %}
           <form method="post" action="{{ url_for('public.save_place', place_id=place.id) }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="next" value="{{ request.path }}" />
             <button class="btn btn-outline-primary" type="submit">
               <i class="fa-regular fa-bookmark me-1"></i>Save place
@@ -50,6 +52,7 @@
             {% for trip in user_trips %}
               <li>
                 <form method="post" action="{{ url_for('public.trip_add_place', trip_id=trip.id, place_id=place.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                   <input type="hidden" name="next" value="{{ request.path }}" />
                   <button class="dropdown-item" type="submit">{{ trip.name }}</button>
                 </form>
