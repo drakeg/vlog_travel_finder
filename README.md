@@ -183,6 +183,12 @@ As an admin, configure anonymous access for each feature:
 - Use **Preview as anonymous** in the navbar to simulate logged-out access without logging out.
 - While preview is active, member-only pages and actions are treated as unauthenticated; the admin can still use **Stop preview** to return to the authenticated session.
 
+## CSRF protection
+
+State-changing browser form requests are protected with a per-session CSRF token. Rendered POST forms include the token automatically, and missing or invalid tokens receive HTTP 400.
+
+CSRF protection is enabled by default. It can be disabled explicitly with `CSRF_ENABLED=false` for controlled test environments only; production deployments should leave it enabled.
+
 ## Configuration
 
 - `SECRET_KEY`
