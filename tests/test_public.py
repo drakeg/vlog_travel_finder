@@ -1697,3 +1697,93 @@ def test_saved_places_page_shows_trip_controls_or_create_trip_hint(client, app, 
     assert "Add selected places to trip" in body
     assert "UI Trip" in body
     assert 'form="saved-bulk-trip-form"' in body
+
+
+def test_finder_pagination_reaches_beyond_previous_cap(client, app):
+    with app.app_context():
+        db = get_session(app)
+        db.add_all([Place(name=f"Page Destination {i:03d}", city="Page City", state="PA") for i in range(205)])
+        db.commit()
+
+    first = client.get("/places?city=Page+City&sort=name")
+    last = client.get("/places?city=Page+City&sort=name&page=9")
+    first_body = first.get_data(as_text=True)
+    last_body = last.get_data(as_text=True)
+    assert first.status_code == last.status_code == 200
+    assert "Showing 1–24 of 205 matches" in first_body
+    assert "Page Destination 000" in first_body
+    assert "Page Destination 024" not in first_body
+    assert "Showing 193–205 of 205 matches" in last_body
+    assert "Page Destination 204" in last_body
+    assert "Page Destination 000" not in last_body
+    assert "city=Page+City" in first_body
+    assert "sort=name" in first_body
+
+
+def test_finder_pagination_stable_on_tied_sort_values(client, app):
+    with app.app_context():
+        db = get_session(app)
+        db.add_all([Place(name="Tied Page Destination", city="Tie City", state="PA") for _ in range(30)])
+        db.commit()
+
+    first = client.get("/places?city=Tie+City&page=1")
+    second = client.get("/places?city=Tie+City&page=2")
+    assert first.status_code == second.status_code == 200
+    # IDs in detail links distinguish otherwise identical names.
+    import re
+    ids1 = set(re.findall(r'/places/(\d+)', first.get_data(as_text=True)))
+    ids2 = set(re.findall(r'/places/(\d+)', second.get_data(as_text=True)))
+    assert len(ids1) == 24
+    assert len(ids2) == 6
+    assert ids1.isdisjoint(ids2)
+
+
+def test_finder_pagination_clamps_invalid_pages_and_preserves_filters(client, app):
+    with app.app_context():
+        db = get_session(app)
+        db.add_all([
+            Place(
+                name=f"Featured Test {i:03d}",
+                city="Filter City",
+                state="NY",
+                vlog_youtube_url="https://example.com/video",
+            )
+            for i in range(27)
+        ])
+        db.commit()
+
+    filtered = client.get("/places?city=Filter+City&state=NY&vlog_status=featured&sort=newest&page=2")
+    body = filtered.get_data(as_text=True)
+    assert "Showing 25–27 of 27 matches" in body
+    assert "vlog_status=featured" in body
+    assert "sort=newest" in body
+    assert "state=NY" in body
+    for bad in ["-5", "not-a-page", "0"]:
+        assert "Showing 1–24 of 27 matches" in client.get(
+            f"/places?city=Filter+City&vlog_status=featured&page={bad}"
+        ).get_data(as_text=True)
+    assert "Showing 25–27 of 27 matches" in client.get(
+        "/places?city=Filter+City&vlog_status=featured&page=99999"
+    ).get_data(as_text=True)
+    assert "Showing 0–0 of 0 matches" in client.get(
+        "/places?city=No+Such+City"
+    ).get_data(as_text=True)
+
+
+def test_finder_saved_indicator_survives_pagination(client, app):
+    with app.app_context():
+        db = get_session(app)
+        places = [Place(name=f"Saved Page Place {i:03d}", city="Saved City") for i in range(25)]
+        db.add_all(places)
+        db.commit()
+        saved_id = places[-1].id
+
+    client.post(
+        "/register",
+        data={"email": "saved-page@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(f"/places/{saved_id}/save")
+    body = client.get("/places?city=Saved+City&sort=name&page=2").get_data(as_text=True)
+    assert f"/places/{saved_id}/unsave" in body
+    assert 'name="_csrf_token"' in body
