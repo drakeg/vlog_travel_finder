@@ -47,6 +47,7 @@
                         <i class="fa-solid fa-pen-to-square"></i>
                       </a>
                       <form method="post" action="{{ url_for('admin.admin_post_delete', post_id=p['id']) }}" class="mb-0" onsubmit="return confirm('Delete this post?');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                           <i class="fa-solid fa-trash"></i>
                         </button>
