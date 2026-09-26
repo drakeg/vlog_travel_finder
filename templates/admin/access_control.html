@@ -13,6 +13,7 @@
   <div class="card shadow-sm">
     <div class="card-body">
       <form method="post" class="row g-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <div class="col-12">
           <div class="text-muted small">Toggle whether anonymous (logged-out) visitors can access each feature.</div>
         </div>
