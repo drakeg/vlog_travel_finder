@@ -10,6 +10,7 @@
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <form method="post" action="{{ url_for('admin.admin_places_import') }}" enctype="multipart/form-data" class="d-flex gap-2">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <input class="form-control form-control-sm" type="file" name="csv_file" accept=".csv,text/csv" required aria-label="CSV file to import" />
         <button class="btn btn-outline-secondary" type="submit">
           <i class="fa-solid fa-file-import me-1"></i>Import CSV
@@ -57,6 +58,7 @@
                         <i class="fa-solid fa-pen-to-square"></i>
                       </a>
                       <form method="post" action="{{ url_for('admin.admin_place_delete', place_id=p['id']) }}" class="mb-0" onsubmit="return confirm('Delete this place?');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                         <button type="submit" class="btn btn-sm btn-outline-danger">
                           <i class="fa-solid fa-trash"></i>
                         </button>

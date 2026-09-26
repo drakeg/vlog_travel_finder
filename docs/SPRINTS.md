@@ -300,22 +300,45 @@ Deferred:
 
 ### Sprint 9 — Anonymous preview authorization hardening
 
-Status: In progress
+Status: Complete
 
 Planning issue: #135
 
-Current work:
+Shipped:
 
-- #136 — treat anonymous-preview sessions as unauthenticated for member-only routes;
-- block private Saved Places and Trips GET routes during preview;
-- block member-only POST mutations and exports during preview;
-- preserve the admin-only Stop Preview action;
-- keep normal authenticated behavior unchanged;
-- add representative GET/POST and preview-exit regression coverage.
+- anonymous-preview sessions treated as unauthenticated by login_required;
+- private Saved Places and Trips GET routes blocked during preview;
+- member-only mutations and exports blocked during preview;
+- admin-only Stop Preview preserved;
+- normal authenticated access preserved;
+- representative GET/POST and preview-exit regression coverage.
 
-Out of scope for Sprint 9:
+Deferred:
 
 - CSRF protection;
 - session backend replacement;
 - role-system redesign;
 - shared or collaborative trips.
+
+### Sprint 10 — CSRF protection
+
+Status: In progress
+
+Planning issue: #140
+
+Current work:
+
+- #141 — add a cryptographically random per-session CSRF token;
+- validate unsafe browser form requests with constant-time comparison;
+- add CSRF hidden fields to public, auth, and admin POST forms;
+- return HTTP 400 for missing or invalid tokens;
+- keep safe methods unaffected;
+- isolate CSRF-specific test coverage while keeping the broader suite maintainable;
+- document production behavior and test-only disablement.
+
+Out of scope for Sprint 10:
+
+- API-key authentication;
+- OAuth;
+- session backend replacement;
+- same-origin API redesign.

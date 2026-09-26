@@ -13,6 +13,7 @@ from .blueprints.admin import admin_bp
 from .blueprints.auth import auth_bp
 from .blueprints.public import public_bp
 from .context import inject_globals
+from .csrf import init_csrf
 from .models import PageView, User
 
 
@@ -33,9 +34,12 @@ def create_app() -> Flask:
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev"),
         DATABASE_URL=os.environ.get("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}"),
+        CSRF_ENABLED=os.environ.get("CSRF_ENABLED", "true").lower()
+        not in {"0", "false", "no", "off"},
     )
 
     init_db(app)
+    init_csrf(app)
 
     @app.after_request
     def _log_page_view(response):

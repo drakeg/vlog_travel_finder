@@ -16,6 +16,7 @@
   <div class="card shadow-sm mb-3">
     <div class="card-body">
       <form method="post" class="row g-2 align-items-end">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <div class="col-12 col-md-8">
           <label for="name" class="form-label">New category</label>
           <input class="form-control" id="name" name="name" placeholder="Restaurants" />
@@ -37,6 +38,7 @@
             <div class="list-group-item d-flex align-items-center justify-content-between">
               <div class="fw-semibold">{{ c.name }}</div>
               <form method="post" action="{{ url_for('admin.admin_category_delete', category_id=c.id) }}" class="mb-0" onsubmit="return confirm('Delete this category?');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                 <button type="submit" class="btn btn-sm btn-outline-danger">
                   <i class="fa-solid fa-trash"></i>
                 </button>

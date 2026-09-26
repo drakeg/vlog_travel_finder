@@ -22,7 +22,9 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "test")
 
     app = create_app()
-    app.config.update(TESTING=True)
+    # Existing behavioral tests focus on route behavior rather than CSRF mechanics.
+    # Dedicated CSRF tests enable protection explicitly.
+    app.config.update(TESTING=True, CSRF_ENABLED=False)
 
     admin_password = secrets.token_urlsafe(16)
     app.config["TEST_ADMIN_PASSWORD"] = admin_password

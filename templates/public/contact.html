@@ -13,6 +13,7 @@
           <hr />
 
           <form method="post" class="row g-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
             <div class="col-12" style="display:none;">
               <label for="website" class="form-label">Website</label>
               <input class="form-control" id="website" name="website" type="text" value="" autocomplete="off" />

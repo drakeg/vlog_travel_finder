@@ -26,6 +26,7 @@
         <i class="fa-regular fa-calendar-plus me-1"></i>Download calendar
       </a>
       <form method="post" action="{{ url_for('public.trip_duplicate', trip_id=trip.id) }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <button class="btn btn-outline-secondary" type="submit">
           <i class="fa-regular fa-copy me-1"></i>Duplicate trip
         </button>
@@ -40,6 +41,7 @@
     <div class="card-body">
       <h2 class="h5">Trip details</h2>
       <form method="post" action="{{ url_for('public.trip_update', trip_id=trip.id) }}" class="row g-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <div class="col-12 col-md-4">
           <label class="form-label" for="trip-name">Name</label>
           <input class="form-control" id="trip-name" type="text" name="name" value="{{ trip.name }}" required />
@@ -85,16 +87,19 @@
 
           <div class="d-flex gap-2 flex-wrap">
             <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='up') }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
               <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop up" {% if stop.sequence == 1 %}disabled{% endif %}>
                 <i class="fa-solid fa-arrow-up"></i>
               </button>
             </form>
             <form method="post" action="{{ url_for('public.trip_move_place', trip_id=trip.id, place_id=place.id, direction='down') }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
               <button class="btn btn-sm btn-outline-secondary" type="submit" title="Move stop down" {% if stop.sequence == stops|length %}disabled{% endif %}>
                 <i class="fa-solid fa-arrow-down"></i>
               </button>
             </form>
             <form method="post" action="{{ url_for('public.trip_remove_place', trip_id=trip.id, place_id=place.id) }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
               <button class="btn btn-sm btn-outline-danger" type="submit" title="Remove from trip">
                 <i class="fa-solid fa-xmark"></i>
               </button>
@@ -103,6 +108,7 @@
         </div>
 
         <form method="post" action="{{ url_for('public.trip_update_place_schedule', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
           <div class="row g-2 align-items-end">
             <div class="col-12 col-sm-5">
               <label class="form-label small" for="stop-date-{{ place.id }}">Planned date</label>
@@ -126,6 +132,7 @@
         </form>
 
         <form method="post" action="{{ url_for('public.trip_update_place_notes', trip_id=trip.id, place_id=place.id) }}" class="pt-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
           <label class="form-label small" for="stop-notes-{{ place.id }}">Stop notes</label>
           <div class="input-group">
             <input class="form-control" id="stop-notes-{{ place.id }}" type="text" name="notes" value="{{ stop.notes or '' }}" placeholder="Reservation, timing, parking, or other notes" />

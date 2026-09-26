@@ -26,6 +26,7 @@
   <div class="card shadow-sm">
     <div class="card-body">
       <form method="post" class="row g-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
         <div class="col-12">
           <label for="subject" class="form-label">Subject</label>
           <input class="form-control" id="subject" name="subject" value="{{ default_subject }}" />

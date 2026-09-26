@@ -57,6 +57,7 @@
                       {% endif %}
 
                       <form method="post" action="{{ url_for('admin.admin_message_toggle_answered', message_id=m['id']) }}" class="mb-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                         <button type="submit" class="btn btn-sm btn-outline-primary">
                           {% if m['answered_at'] %}
                             Mark un-answered
