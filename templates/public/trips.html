@@ -9,6 +9,7 @@
       <div class="text-muted">Organize places into named trip lists.</div>
     </div>
     <form method="post" action="{{ url_for('public.trips') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
       <div class="col-12 col-md-auto"><input class="form-control" type="text" name="name" placeholder="New trip name" required /></div>
       <div class="col-12 col-md-auto"><input class="form-control" type="date" name="start_date" aria-label="Trip start date" /></div>
       <div class="col-12 col-md-auto"><input class="form-control" type="date" name="end_date" aria-label="Trip end date" /></div>
@@ -45,6 +46,7 @@
                   View trip
                 </a>
                 <form method="post" action="{{ url_for('public.trip_delete', trip_id=trip.id) }}" class="mb-0" onsubmit="return confirm('Delete this trip?');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                   <button class="btn btn-outline-danger" type="submit" title="Delete trip">
                     <i class="fa-solid fa-trash"></i>
                   </button>
