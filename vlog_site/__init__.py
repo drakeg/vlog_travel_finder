@@ -22,6 +22,13 @@ DEFAULT_SQLITE_PATH = os.path.join(os.path.dirname(APP_DIR), "instance", "vlog_s
 REPO_DIR = os.path.dirname(APP_DIR)
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def create_app() -> Flask:
     app = Flask(
         __name__,
@@ -36,6 +43,9 @@ def create_app() -> Flask:
         DATABASE_URL=os.environ.get("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}"),
         CSRF_ENABLED=os.environ.get("CSRF_ENABLED", "true").lower()
         not in {"0", "false", "no", "off"},
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=_env_bool("SESSION_COOKIE_SECURE", False),
     )
 
     init_db(app)

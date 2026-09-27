@@ -51,9 +51,14 @@ Docker Compose can run the app and the test suite without creating a host Python
 
 ### Start the app
 
+Copy the example environment file and adjust values as needed:
+
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
+
+The host port defaults to `5000` and can be changed with `APP_PORT`.
 
 Then open:
 
@@ -196,12 +201,18 @@ CSRF protection is enabled by default. It can be disabled explicitly with `CSRF_
   - Set this in production (do not use `dev`).
 - `DATABASE_URL`
   - SQLAlchemy database URL. Defaults to SQLite.
+- `SESSION_COOKIE_SECURE`
+  - Defaults to `false` for local HTTP development. Set to `true` when the site is served over HTTPS in production.
+- Session cookies are explicitly `HttpOnly` and `SameSite=Lax`.
+- `CSRF_ENABLED`
+  - Defaults to `true`. Disable only in controlled test environments.
 
 Example:
 
 ```bash
 export SECRET_KEY='your-long-random-string'
 export DATABASE_URL='sqlite:////absolute/path/to/vlog_site.sqlite'
+export SESSION_COOKIE_SECURE=true
 
 # Postgres example:
 # export DATABASE_URL='postgresql+psycopg://user:password@localhost:5432/vlog_site'

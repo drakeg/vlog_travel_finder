@@ -4,8 +4,10 @@ services:
       context: .
     environment:
       SECRET_KEY: ${SECRET_KEY:-docker-compose-dev-secret}
-      DATABASE_URL: sqlite:////app/instance/vlog_site.sqlite
-      FLASK_DEBUG: "1"
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/instance/vlog_site.sqlite}
+      CSRF_ENABLED: ${CSRF_ENABLED:-true}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      FLASK_DEBUG: ${FLASK_DEBUG:-1}
     command:
       - python
       - -m
@@ -16,7 +18,7 @@ services:
       - --host=0.0.0.0
       - --port=5000
     ports:
-      - "5000:5000"
+      - "${APP_PORT:-5000}:5000"
     volumes:
       - .:/app
       - vlog_instance:/app/instance
