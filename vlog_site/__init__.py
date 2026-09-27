@@ -29,6 +29,16 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return default
+
+
 def create_app() -> Flask:
     app = Flask(
         __name__,
@@ -46,6 +56,8 @@ def create_app() -> Flask:
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=_env_bool("SESSION_COOKIE_SECURE", False),
+        SECURITY_HSTS_ENABLED=_env_bool("SECURITY_HSTS_ENABLED", False),
+        SECURITY_HSTS_MAX_AGE=_env_int("SECURITY_HSTS_MAX_AGE", 31536000),
     )
 
     init_db(app)
@@ -93,6 +105,21 @@ def create_app() -> Flask:
             db.commit()
         except Exception:
             pass
+        return response
+
+    @app.after_request
+    def _security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        if app.config.get("SECURITY_HSTS_ENABLED"):
+            max_age = max(0, int(app.config.get("SECURITY_HSTS_MAX_AGE", 31536000)))
+            response.headers["Strict-Transport-Security"] = (
+                f"max-age={max_age}; includeSubDomains"
+            )
         return response
 
     @app.cli.command("init-db")
