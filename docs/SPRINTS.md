@@ -343,22 +343,46 @@ Deferred:
 
 ### Sprint 11 — Place finder pagination
 
-Status: In progress
+Status: Complete
 
 Planning issue: #143
 
-Current work:
+Shipped:
 
-- #144 — return places 24 per page instead of silently limiting to 200;
-- count all matches after applying search filters;
-- retain filters and sorting in pagination URLs;
-- use deterministic ordering with place ID as the tie breaker;
-- clamp invalid or out-of-range page numbers;
-- keep saved-place indicators scoped to visible results;
-- add regression coverage for page boundaries, filters, ties, and empty results.
+- 24-result place-finder pages instead of a silent 200-place cap;
+- total-result counting after filters;
+- persistent search, location, category, vlog-status, and sort parameters;
+- deterministic ordering across page boundaries;
+- safe handling of invalid and out-of-range page numbers;
+- saved-state lookup scoped to displayed results;
+- accessible pagination controls;
+- regression coverage for 200+ results, boundaries, ties, filters, empty results, and saved indicators.
 
-Out of scope:
+Deferred:
 
 - infinite scroll;
 - new external map APIs;
 - schema migrations.
+
+### Sprint 12 — Session cookie hardening
+
+Status: In progress
+
+Planning issue: #147
+
+Current work:
+
+- #148 — explicitly enable HttpOnly session cookies;
+- explicitly set SameSite=Lax;
+- make Secure cookies configurable for HTTPS deployments;
+- parse common boolean environment values predictably;
+- add cookie-attribute regression tests;
+- add .env.example and configurable Compose runtime settings, including the host port;
+- document production and local-development behavior.
+
+Out of scope:
+
+- server-side session storage;
+- OAuth;
+- MFA;
+- reverse-proxy TLS termination configuration.
