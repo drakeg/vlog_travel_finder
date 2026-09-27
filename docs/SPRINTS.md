@@ -322,23 +322,43 @@ Deferred:
 
 ### Sprint 10 — CSRF protection
 
-Status: In progress
+Status: Complete
 
 Planning issue: #140
 
-Current work:
+Shipped:
 
-- #141 — add a cryptographically random per-session CSRF token;
-- validate unsafe browser form requests with constant-time comparison;
-- add CSRF hidden fields to public, auth, and admin POST forms;
-- return HTTP 400 for missing or invalid tokens;
-- keep safe methods unaffected;
-- isolate CSRF-specific test coverage while keeping the broader suite maintainable;
-- document production behavior and test-only disablement.
+- per-session CSRF tokens and constant-time validation for unsafe requests;
+- public, member, auth, and admin POST-form token fields;
+- explicit HTTP 400 for invalid or missing tokens;
+- dedicated regression tests, with general route tests isolated from CSRF mechanics;
+- production and testing documentation.
 
-Out of scope for Sprint 10:
+Deferred:
 
 - API-key authentication;
 - OAuth;
 - session backend replacement;
 - same-origin API redesign.
+
+### Sprint 11 — Place finder pagination
+
+Status: In progress
+
+Planning issue: #143
+
+Current work:
+
+- #144 — return places 24 per page instead of silently limiting to 200;
+- count all matches after applying search filters;
+- retain filters and sorting in pagination URLs;
+- use deterministic ordering with place ID as the tie breaker;
+- clamp invalid or out-of-range page numbers;
+- keep saved-place indicators scoped to visible results;
+- add regression coverage for page boundaries, filters, ties, and empty results.
+
+Out of scope:
+
+- infinite scroll;
+- new external map APIs;
+- schema migrations.

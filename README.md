@@ -31,6 +31,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Saved places can be added to trips individually or in bulk
   - Filter destinations by whether they have already been featured in your vlog
   - Sort place results by location, name, or newest additions
+  - Browse filtered place results 24 at a time with persistent search and sort controls
   - Open saved places in Google Maps using coordinates or address data
 
 ## Development process
