@@ -366,23 +366,47 @@ Deferred:
 
 ### Sprint 12 — Session cookie hardening
 
-Status: In progress
+Status: Complete
 
 Planning issue: #147
 
-Current work:
+Shipped:
 
-- #148 — explicitly enable HttpOnly session cookies;
-- explicitly set SameSite=Lax;
-- make Secure cookies configurable for HTTPS deployments;
-- parse common boolean environment values predictably;
-- add cookie-attribute regression tests;
-- add .env.example and configurable Compose runtime settings, including the host port;
-- document production and local-development behavior.
+- explicit HttpOnly session cookies;
+- explicit SameSite=Lax session cookies;
+- configurable Secure cookies for HTTPS deployments;
+- predictable boolean environment parsing;
+- cookie-attribute regression tests;
+- .env.example and configurable Compose runtime settings, including the host port;
+- documented production and local-development behavior.
 
-Out of scope:
+Deferred:
 
 - server-side session storage;
 - OAuth;
 - MFA;
 - reverse-proxy TLS termination configuration.
+
+### Sprint 13 — HTTP security headers
+
+Status: In progress
+
+Planning issue: #150
+
+Current work:
+
+- #151 — add nosniff response protection;
+- add SAMEORIGIN frame protection;
+- add strict-origin-when-cross-origin referrer policy;
+- disable unused camera, microphone, and geolocation browser permissions;
+- make HSTS opt-in for HTTPS deployments;
+- make HSTS max-age configurable;
+- add default and HSTS-enabled regression coverage;
+- update runtime and deployment documentation.
+
+Out of scope:
+
+- Content-Security-Policy rollout;
+- reverse-proxy TLS configuration;
+- Subresource Integrity management;
+- CDN configuration.
