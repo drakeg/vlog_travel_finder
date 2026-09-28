@@ -39,6 +39,29 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _validate_production_config(app: Flask) -> None:
+    """Reject deployment settings that would expose production sessions."""
+    if os.environ.get("APP_ENV", "development").strip().lower() != "production":
+        return
+
+    secret = app.config.get("SECRET_KEY") or ""
+    if (
+        len(secret) < 32
+        or secret.lower().startswith(("dev", "test", "change-me", "replace-with"))
+        or secret == "docker-compose-dev-secret"
+    ):
+        raise RuntimeError(
+            "Production requires a strong SECRET_KEY (at least 32 characters, "
+            "not an example or development value)"
+        )
+    if not app.config.get("CSRF_ENABLED"):
+        raise RuntimeError("CSRF_ENABLED must be true in production")
+    if not app.config.get("SESSION_COOKIE_SECURE"):
+        raise RuntimeError("SESSION_COOKIE_SECURE must be true in production")
+    if _env_bool("FLASK_DEBUG", False):
+        raise RuntimeError("FLASK_DEBUG must be disabled in production")
+
+
 def create_app() -> Flask:
     app = Flask(
         __name__,
@@ -59,6 +82,8 @@ def create_app() -> Flask:
         SECURITY_HSTS_ENABLED=_env_bool("SECURITY_HSTS_ENABLED", False),
         SECURITY_HSTS_MAX_AGE=_env_int("SECURITY_HSTS_MAX_AGE", 31536000),
     )
+
+    _validate_production_config(app)
 
     init_db(app)
     init_csrf(app)

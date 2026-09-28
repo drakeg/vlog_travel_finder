@@ -3,6 +3,7 @@ services:
     build:
       context: .
     environment:
+      APP_ENV: ${APP_ENV:-development}
       SECRET_KEY: ${SECRET_KEY:-docker-compose-dev-secret}
       DATABASE_URL: ${DATABASE_URL:-sqlite:////app/instance/vlog_site.sqlite}
       CSRF_ENABLED: ${CSRF_ENABLED:-true}

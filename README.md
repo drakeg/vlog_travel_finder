@@ -195,8 +195,14 @@ State-changing browser form requests are protected with a per-session CSRF token
 
 CSRF protection is enabled by default. It can be disabled explicitly with `CSRF_ENABLED=false` for controlled test environments only; production deployments should leave it enabled.
 
+## Production configuration safeguards
+
+Set `APP_ENV=production` for production deployments. Startup will reject a default, placeholder, or shorter-than-32-character `SECRET_KEY`, disabled `CSRF_ENABLED`, disabled `SESSION_COOKIE_SECURE`, or enabled `FLASK_DEBUG`. Generate a unique random signing secret; do not use the example `.env` value. These checks are opt-in so the local HTTP workflow remains unchanged. Serve the production app over HTTPS before enabling Secure cookies, and configure TLS at the hosting platform or reverse proxy.
+
 ## Configuration
 
+- `APP_ENV`
+  - Defaults to `development`. Set to `production` to enable mandatory startup checks.
 - `SECRET_KEY`
   - Set this in production (do not use `dev`).
 - `DATABASE_URL`

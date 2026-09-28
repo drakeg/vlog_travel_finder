@@ -389,24 +389,39 @@ Deferred:
 
 ### Sprint 13 — HTTP security headers
 
-Status: In progress
+Status: Complete
 
 Planning issue: #150
 
-Current work:
+Shipped:
 
-- #151 — add nosniff response protection;
-- add SAMEORIGIN frame protection;
-- add strict-origin-when-cross-origin referrer policy;
-- disable unused camera, microphone, and geolocation browser permissions;
-- make HSTS opt-in for HTTPS deployments;
-- make HSTS max-age configurable;
-- add default and HSTS-enabled regression coverage;
-- update runtime and deployment documentation.
+- nosniff, SAMEORIGIN, referrer, and browser permissions response headers;
+- opt-in HTTPS HSTS with configurable max-age;
+- regression tests, Compose/.env.example settings and deployment documentation.
 
-Out of scope:
+Deferred:
 
 - Content-Security-Policy rollout;
 - reverse-proxy TLS configuration;
 - Subresource Integrity management;
 - CDN configuration.
+
+### Sprint 14 — Production configuration guardrails
+
+Status: In progress
+
+Planning issue: #154
+
+Current work:
+
+- #155 — reject weak/placeholder production signing secrets;
+- require CSRF and Secure cookies in production;
+- reject production Flask debug mode;
+- preserve local development defaults;
+- add regression coverage and .env/Compose/README guidance.
+
+Out of scope:
+
+- TLS termination setup;
+- secret rotation automation;
+- authentication redesign.
