@@ -206,6 +206,11 @@ CSRF protection is enabled by default. It can be disabled explicitly with `CSRF_
 - Session cookies are explicitly `HttpOnly` and `SameSite=Lax`.
 - `CSRF_ENABLED`
   - Defaults to `true`. Disable only in controlled test environments.
+- `SECURITY_HSTS_ENABLED`
+  - Defaults to `false` for local HTTP development. Set to `true` only when the site is served over HTTPS.
+- `SECURITY_HSTS_MAX_AGE`
+  - Defaults to `31536000` seconds (one year) when HSTS is enabled.
+- Responses also include `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and a restrictive camera/microphone/geolocation `Permissions-Policy`.
 
 Example:
 
@@ -213,6 +218,8 @@ Example:
 export SECRET_KEY='your-long-random-string'
 export DATABASE_URL='sqlite:////absolute/path/to/vlog_site.sqlite'
 export SESSION_COOKIE_SECURE=true
+export SECURITY_HSTS_ENABLED=true
+export SECURITY_HSTS_MAX_AGE=31536000
 
 # Postgres example:
 # export DATABASE_URL='postgresql+psycopg://user:password@localhost:5432/vlog_site'
