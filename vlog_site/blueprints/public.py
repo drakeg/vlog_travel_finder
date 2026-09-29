@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
@@ -704,12 +704,36 @@ def trip_duplicate(trip_id: int):
     source = _current_user_trip_or_404(db, trip_id)
     user_id = int(session["user_id"])
 
+    requested_start_raw = clean_str(request.form.get("new_start_date"))
+    date_delta = timedelta(0)
+    duplicate_start_date = source.start_date
+    duplicate_end_date = source.end_date
+
+    if requested_start_raw:
+        if not source.start_date:
+            flash("Set a start date on the source trip before shifting dates", "error")
+            return redirect(url_for("public.trip_detail", trip_id=source.id))
+        try:
+            requested_start = _clean_iso_date(requested_start_raw)
+            source_start = date.fromisoformat(source.start_date)
+        except ValueError:
+            flash("Enter a valid new start date", "error")
+            return redirect(url_for("public.trip_detail", trip_id=source.id))
+
+        assert requested_start is not None
+        date_delta = date.fromisoformat(requested_start) - source_start
+        duplicate_start_date = requested_start
+        if source.end_date:
+            duplicate_end_date = (
+                date.fromisoformat(source.end_date) + date_delta
+            ).isoformat()
+
     duplicate = Trip(
         user_id=user_id,
         name=f"{source.name} (Copy)",
         notes=source.notes,
-        start_date=source.start_date,
-        end_date=source.end_date,
+        start_date=duplicate_start_date,
+        end_date=duplicate_end_date,
     )
     db.add(duplicate)
     db.flush()
@@ -734,7 +758,11 @@ def trip_duplicate(trip_id: int):
                 place_id=stop.place_id,
                 position=stop.position,
                 notes=stop.notes,
-                planned_date=stop.planned_date,
+                planned_date=(
+                    (date.fromisoformat(stop.planned_date) + date_delta).isoformat()
+                    if stop.planned_date and requested_start_raw
+                    else stop.planned_date
+                ),
                 planned_time=stop.planned_time,
             )
         )
