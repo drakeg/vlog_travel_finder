@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import date, datetime, time, timedelta, timezone
+from urllib.parse import urlencode
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
@@ -71,6 +72,33 @@ def _ics_escape(value: str) -> str:
 def _place_address(place: Place) -> str:
     parts = [place.address, place.city, place.state, place.zipcode]
     return ", ".join(part.strip() for part in parts if part and part.strip())
+
+
+def _maps_route_location(place: Place) -> str | None:
+    if place.latitude is not None and place.longitude is not None:
+        return f"{place.latitude},{place.longitude}"
+    address = _place_address(place)
+    return address or None
+
+
+def _google_maps_route_url(stops: list[dict]) -> str | None:
+    locations = [
+        location
+        for stop in stops
+        if (location := _maps_route_location(stop["place"]))
+    ]
+    if len(locations) < 2:
+        return None
+
+    params = {
+        "api": "1",
+        "origin": locations[0],
+        "destination": locations[-1],
+        "travelmode": "driving",
+    }
+    if len(locations) > 2:
+        params["waypoints"] = "|".join(locations[1:-1])
+    return "https://www.google.com/maps/dir/?" + urlencode(params)
 
 
 @public_bp.route("/uploads/<path:filename>")
@@ -455,7 +483,11 @@ def _trip_itinerary_data(db, trip: Trip) -> tuple[list[dict], list[dict], list[d
             unscheduled_stops.append(stop)
 
     day_groups = [
-        {"date": planned_date, "stops": scheduled_by_date[planned_date]}
+        {
+            "date": planned_date,
+            "stops": scheduled_by_date[planned_date],
+            "route_url": _google_maps_route_url(scheduled_by_date[planned_date]),
+        }
         for planned_date in sorted(scheduled_by_date)
     ]
     return stops, day_groups, unscheduled_stops
