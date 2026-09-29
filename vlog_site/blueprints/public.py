@@ -886,6 +886,58 @@ def trip_move_place(trip_id: int, place_id: int, direction: str):
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
+@public_bp.route("/trips/<int:trip_id>/schedule-bulk", methods=["POST"])
+@login_required
+def trip_bulk_schedule(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+
+    selected_ids: list[int] = []
+    for raw in request.form.getlist("place_ids"):
+        try:
+            place_id = int(raw)
+        except ValueError:
+            continue
+        if place_id not in selected_ids:
+            selected_ids.append(place_id)
+
+    if not selected_ids:
+        flash("Select at least one stop", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    try:
+        planned_date = _clean_iso_date(request.form.get("planned_date"))
+    except ValueError:
+        flash("Bulk stop date must use a valid date", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    if not _stop_date_within_trip(trip, planned_date):
+        flash("Stop date must fall within the trip date range", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    rows = (
+        db.execute(
+            select(TripPlace).where(
+                TripPlace.trip_id == trip.id,
+                TripPlace.place_id.in_(selected_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        flash("No selected stops belong to this trip", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    for row in rows:
+        row.planned_date = planned_date
+    db.commit()
+
+    action = "Cleared dates from" if planned_date is None else f"Scheduled"
+    flash(f"{action} {len(rows)} stop{'s' if len(rows) != 1 else ''}", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
 @public_bp.route("/trips/<int:trip_id>/places/<int:place_id>/schedule", methods=["POST"])
 @login_required
 def trip_update_place_schedule(trip_id: int, place_id: int):
