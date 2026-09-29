@@ -429,23 +429,46 @@ Deferred:
 
 ### Sprint 15 — Date-shifted trip duplication
 
-Status: In progress
+Status: Complete
 
 Planning issue: #157
 
-Current work:
+Shipped:
 
-- #158 — accept an optional new start date when duplicating a trip;
-- shift copied trip start/end dates by the same day offset;
-- shift scheduled stop dates while preserving planned times;
-- keep unscheduled stops unscheduled;
-- retain existing one-click duplication when no date is supplied;
-- reject invalid shift requests before creating a partial copy;
-- add forward/backward/no-date/validation regression coverage.
+- optional new start date on trip duplication;
+- same-offset shifting of copied trip start/end dates;
+- same-offset shifting of scheduled stop dates while preserving times;
+- unchanged unscheduled stops and one-click duplication behavior;
+- validation preventing partial copies for invalid shift requests;
+- forward/backward shift and validation regression coverage.
 
-Out of scope:
+Deferred:
 
 - time-zone conversion;
 - route optimization;
 - holiday-aware scheduling;
 - shared/public templates.
+
+### Sprint 16 — Daily Google Maps routes
+
+Status: In progress
+
+Planning issue: #160
+
+Current work:
+
+- #161 — generate Google Maps driving URLs from each scheduled day's ordered stops;
+- prefer coordinates and fall back to address text;
+- exclude stops without usable location data;
+- show route actions only when two or more routable stops remain;
+- keep manual itinerary order as origin, waypoints, and destination;
+- require no Maps API key or network request from the server;
+- add route-generation and UI regression coverage.
+
+Out of scope:
+
+- Google Directions API calls;
+- automatic route optimization;
+- distance/time calculations;
+- traffic-aware routing;
+- paid external services.
