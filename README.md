@@ -26,6 +26,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Trips can include start/end dates and per-stop planning notes
   - Trip stops can be scheduled with an optional planned date and time
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
+  - Itinerary days can open their ordered routable stops as a Google Maps driving route without a paid API
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
   - Existing trips can be duplicated as independent editable copies, optionally shifted to a new start date
   - Saved places can be added to trips individually or in bulk
