@@ -1787,3 +1787,126 @@ def test_finder_saved_indicator_survives_pagination(client, app):
     body = client.get("/places?city=Saved+City&sort=name&page=2").get_data(as_text=True)
     assert f"/places/{saved_id}/unsave" in body
     assert 'name="_csrf_token"' in body
+
+
+def test_trip_duplicate_can_shift_dates_forward(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={"email": "shift-forward@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Shift Source",
+            "start_date": "2026-10-10",
+            "end_date": "2026-10-12",
+        },
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Shift Source").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{source_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-10-11", "planned_time": "14:30"},
+    )
+
+    resp = client.post(
+        f"/trips/{source_id}/duplicate",
+        data={"new_start_date": "2026-10-20"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        db = get_session(app)
+        copy = db.query(Trip).filter_by(name="Shift Source (Copy)").first()
+        assert copy is not None
+        assert copy.start_date == "2026-10-20"
+        assert copy.end_date == "2026-10-22"
+        stop = db.get(TripPlace, (copy.id, place_id))
+        assert stop is not None
+        assert stop.planned_date == "2026-10-21"
+        assert stop.planned_time == "14:30"
+
+
+def test_trip_duplicate_can_shift_dates_backward_and_keep_unscheduled_stops(
+    client, app, seeded_content
+):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={"email": "shift-back@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Back Shift", "start_date": "2026-11-10", "end_date": "2026-11-12"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Back Shift").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{source_id}/duplicate",
+        data={"new_start_date": "2026-11-01"},
+        follow_redirects=False,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        copy = db.query(Trip).filter_by(name="Back Shift (Copy)").first()
+        assert copy is not None
+        assert copy.start_date == "2026-11-01"
+        assert copy.end_date == "2026-11-03"
+        stop = db.get(TripPlace, (copy.id, place_id))
+        assert stop is not None
+        assert stop.planned_date is None
+
+
+def test_trip_duplicate_shift_rejects_invalid_or_missing_source_start(
+    client, app
+):
+    client.post(
+        "/register",
+        data={"email": "shift-invalid@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "No Start"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="No Start").first()
+        assert source is not None
+        source_id = source.id
+
+    no_start = client.post(
+        f"/trips/{source_id}/duplicate",
+        data={"new_start_date": "2026-12-01"},
+        follow_redirects=True,
+    )
+    assert "Set a start date on the source trip before shifting dates" in no_start.get_data(as_text=True)
+
+    client.post(
+        f"/trips/{source_id}/update",
+        data={"name": "No Start", "start_date": "2026-12-10", "end_date": "2026-12-12"},
+    )
+    invalid = client.post(
+        f"/trips/{source_id}/duplicate",
+        data={"new_start_date": "not-a-date"},
+        follow_redirects=True,
+    )
+    assert "Enter a valid new start date" in invalid.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(Trip).filter_by(name="No Start (Copy)").count() == 0

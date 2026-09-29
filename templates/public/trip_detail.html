@@ -25,9 +25,17 @@
       <a class="btn btn-outline-secondary" href="{{ url_for('public.trip_calendar_export', trip_id=trip.id) }}">
         <i class="fa-regular fa-calendar-plus me-1"></i>Download calendar
       </a>
-      <form method="post" action="{{ url_for('public.trip_duplicate', trip_id=trip.id) }}" class="mb-0">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
-        <button class="btn btn-outline-secondary" type="submit">
+      <form method="post" action="{{ url_for('public.trip_duplicate', trip_id=trip.id) }}" class="d-flex gap-2 align-items-center mb-0">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+        <label class="visually-hidden" for="duplicate-start-date">New start date for copied trip</label>
+        <input
+          class="form-control form-control-sm"
+          id="duplicate-start-date"
+          type="date"
+          name="new_start_date"
+          title="Optional: shift copied trip and scheduled stops to a new start date"
+        />
+        <button class="btn btn-outline-secondary text-nowrap" type="submit">
           <i class="fa-regular fa-copy me-1"></i>Duplicate trip
         </button>
       </form>
