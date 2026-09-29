@@ -408,20 +408,44 @@ Deferred:
 
 ### Sprint 14 — Production configuration guardrails
 
-Status: In progress
+Status: Complete
 
 Planning issue: #154
 
-Current work:
+Shipped:
 
-- #155 — reject weak/placeholder production signing secrets;
-- require CSRF and Secure cookies in production;
-- reject production Flask debug mode;
-- preserve local development defaults;
-- add regression coverage and .env/Compose/README guidance.
+- production startup validation behind APP_ENV=production;
+- rejection of weak, placeholder, or too-short signing secrets;
+- mandatory CSRF and Secure session cookies in production;
+- production debug-mode rejection;
+- preserved local/test defaults outside production;
+- regression coverage plus Compose, .env.example, and README guidance.
 
-Out of scope:
+Deferred:
 
 - TLS termination setup;
 - secret rotation automation;
 - authentication redesign.
+
+### Sprint 15 — Date-shifted trip duplication
+
+Status: In progress
+
+Planning issue: #157
+
+Current work:
+
+- #158 — accept an optional new start date when duplicating a trip;
+- shift copied trip start/end dates by the same day offset;
+- shift scheduled stop dates while preserving planned times;
+- keep unscheduled stops unscheduled;
+- retain existing one-click duplication when no date is supplied;
+- reject invalid shift requests before creating a partial copy;
+- add forward/backward/no-date/validation regression coverage.
+
+Out of scope:
+
+- time-zone conversion;
+- route optimization;
+- holiday-aware scheduling;
+- shared/public templates.
