@@ -1,3 +1,4 @@
+from vlog_site.blueprints.public import _google_maps_route_url
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
 from vlog_site.models import PageView, Place, SavedPlace, Trip, TripPlace
@@ -1910,3 +1911,73 @@ def test_trip_duplicate_shift_rejects_invalid_or_missing_source_start(
     with app.app_context():
         db = get_session(app)
         assert db.query(Trip).filter_by(name="No Start (Copy)").count() == 0
+
+
+def test_google_maps_day_route_prefers_coordinates_and_preserves_order():
+    first = Place(name="First", latitude=42.1, longitude=-76.1)
+    middle = Place(
+        name="Middle",
+        address="10 Main St",
+        city="Ithaca",
+        state="NY",
+        zipcode="14850",
+    )
+    last = Place(name="Last", latitude=42.3, longitude=-76.3)
+
+    url = _google_maps_route_url(
+        [{"place": first}, {"place": middle}, {"place": last}]
+    )
+    assert url is not None
+    assert "origin=42.1%2C-76.1" in url
+    assert "waypoints=10+Main+St%2C+Ithaca%2C+NY%2C+14850" in url
+    assert "destination=42.3%2C-76.3" in url
+    assert "travelmode=driving" in url
+
+
+def test_google_maps_day_route_ignores_unroutable_stops():
+    usable = Place(name="Usable", address="1 Route Rd", city="Testville", state="PA")
+    missing = Place(name="Missing")
+
+    assert _google_maps_route_url([{"place": usable}, {"place": missing}]) is None
+
+
+def test_trip_day_route_button_requires_two_routable_stops(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Route First", latitude=40.0, longitude=-77.0)
+        second = Place(name="Route Second", address="2 Route Rd", city="State College", state="PA")
+        missing = Place(name="Route Missing")
+        db.add_all([first, second, missing])
+        db.commit()
+        first_id, second_id, missing_id = first.id, second.id, missing.id
+
+    client.post(
+        "/register",
+        data={"email": "day-route@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Route Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Route Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_id, missing_id, second_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/schedule",
+            data={"planned_date": "2026-11-05", "planned_time": ""},
+        )
+
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "Open day route" in body
+    assert "origin=40.0%2C-77.0" in body
+    assert "destination=2+Route+Rd%2C+State+College%2C+PA" in body
+
+    client.post(
+        f"/trips/{trip_id}/places/{second_id}/schedule",
+        data={"planned_date": "2026-11-06", "planned_time": ""},
+    )
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert body.count("Open day route") == 0
