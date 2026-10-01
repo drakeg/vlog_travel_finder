@@ -2150,3 +2150,169 @@ def test_bulk_schedule_ignores_nonmember_ids_and_enforces_trip_ownership(client,
         f"/trips/{trip_id}/schedule-bulk",
         data={"place_ids": str(place_id), "planned_date": "2026-12-06"},
     ).status_code == 404
+
+
+def test_bulk_sequential_times_follow_manual_order_and_preserve_dates(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Timed First")
+        second = Place(name="Timed Second")
+        third = Place(name="Timed Third")
+        db.add_all([first, second, third])
+        db.commit()
+        first_id, second_id, third_id = first.id, second.id, third.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-times@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Timed Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Timed Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_id, second_id, third_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/schedule",
+            data={"planned_date": "2026-12-15", "planned_time": ""},
+        )
+
+    client.post(f"/trips/{trip_id}/places/{third_id}/move/up")
+    client.post(f"/trips/{trip_id}/places/{third_id}/move/up")
+
+    resp = client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={
+            "place_ids": [str(first_id), str(second_id), str(third_id)],
+            "action": "times",
+            "start_time": "09:00",
+            "interval_minutes": "45",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Scheduled times for 3 stops" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        rows = (
+            db.query(TripPlace)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripPlace.position.asc())
+            .all()
+        )
+        assert [row.place_id for row in rows] == [third_id, first_id, second_id]
+        assert [row.planned_time for row in rows] == ["09:00", "09:45", "10:30"]
+        assert [row.planned_date for row in rows] == ["2026-12-15"] * 3
+
+
+def test_bulk_sequential_times_reject_midnight_overflow_atomically(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Late First")
+        second = Place(name="Late Second")
+        db.add_all([first, second])
+        db.commit()
+        first_id, second_id = first.id, second.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-late@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Late Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Late Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_id, second_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    resp = client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={
+            "place_ids": [str(first_id), str(second_id)],
+            "action": "times",
+            "start_time": "23:30",
+            "interval_minutes": "60",
+        },
+        follow_redirects=True,
+    )
+    assert "Sequential times cannot roll into the next day" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripPlace, (trip_id, first_id)).planned_time is None
+        assert db.get(TripPlace, (trip_id, second_id)).planned_time is None
+
+
+def test_bulk_sequential_times_validate_interval_and_ignore_nonmembers(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    with app.app_context():
+        db = get_session(app)
+        other = Place(name="Timing Nonmember")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-time-owner@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Timing Owned Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Timing Owned Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    invalid = client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={
+            "place_ids": str(place_id),
+            "action": "times",
+            "start_time": "09:00",
+            "interval_minutes": "2",
+        },
+        follow_redirects=True,
+    )
+    assert "Interval must be between 5 and 720 minutes" in invalid.get_data(as_text=True)
+
+    client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={
+            "place_ids": [str(place_id), str(other_id)],
+            "action": "times",
+            "start_time": "11:00",
+            "interval_minutes": "30",
+        },
+    )
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripPlace, (trip_id, place_id)).planned_time == "11:00"
+        assert db.get(TripPlace, (trip_id, other_id)) is None
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "bulk-time-intruder@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    assert client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={
+            "place_ids": str(place_id),
+            "action": "times",
+            "start_time": "12:00",
+            "interval_minutes": "30",
+        },
+    ).status_code == 404
