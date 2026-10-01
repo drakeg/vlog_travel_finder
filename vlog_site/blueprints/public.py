@@ -905,6 +905,62 @@ def trip_bulk_schedule(trip_id: int):
         flash("Select at least one stop", "error")
         return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
+    rows = (
+        db.execute(
+            select(TripPlace)
+            .where(
+                TripPlace.trip_id == trip.id,
+                TripPlace.place_id.in_(selected_ids),
+            )
+            .order_by(
+                TripPlace.position.asc(),
+                TripPlace.created_at.asc(),
+                TripPlace.place_id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        flash("No selected stops belong to this trip", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    action = clean_str(request.form.get("action")) or "date"
+    if action == "times":
+        try:
+            start_time = _clean_hhmm_time(request.form.get("start_time"))
+            interval_minutes = int(request.form.get("interval_minutes", ""))
+        except (TypeError, ValueError):
+            flash("Enter a valid start time and interval", "error")
+            return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+        if start_time is None or not 5 <= interval_minutes <= 720:
+            flash("Interval must be between 5 and 720 minutes", "error")
+            return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+        parsed_start = time.fromisoformat(start_time)
+        start_minutes = parsed_start.hour * 60 + parsed_start.minute
+        generated_minutes = [
+            start_minutes + index * interval_minutes
+            for index in range(len(rows))
+        ]
+        if generated_minutes[-1] >= 24 * 60:
+            flash("Sequential times cannot roll into the next day", "error")
+            return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+        for row, minute_value in zip(rows, generated_minutes):
+            hour, minute = divmod(minute_value, 60)
+            row.planned_time = f"{hour:02d}:{minute:02d}"
+        db.commit()
+        flash(
+            f"Scheduled times for {len(rows)} stop{'s' if len(rows) != 1 else ''}",
+            "info",
+        )
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    if action != "date":
+        abort(400)
+
     try:
         planned_date = _clean_iso_date(request.form.get("planned_date"))
     except ValueError:
@@ -915,26 +971,15 @@ def trip_bulk_schedule(trip_id: int):
         flash("Stop date must fall within the trip date range", "error")
         return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
-    rows = (
-        db.execute(
-            select(TripPlace).where(
-                TripPlace.trip_id == trip.id,
-                TripPlace.place_id.in_(selected_ids),
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if not rows:
-        flash("No selected stops belong to this trip", "error")
-        return redirect(url_for("public.trip_detail", trip_id=trip.id))
-
     for row in rows:
         row.planned_date = planned_date
     db.commit()
 
-    action = "Cleared dates from" if planned_date is None else f"Scheduled"
-    flash(f"{action} {len(rows)} stop{'s' if len(rows) != 1 else ''}", "info")
+    date_action = "Cleared dates from" if planned_date is None else "Scheduled"
+    flash(
+        f"{date_action} {len(rows)} stop{'s' if len(rows) != 1 else ''}",
+        "info",
+    )
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
