@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 11
+        latest_version = 12
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -468,6 +468,27 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                     )
 
                 version = 11
+                _set_user_version(conn, version)
+                continue
+
+            if version == 11:
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS trip_checklist_item (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        trip_id INTEGER NOT NULL,
+                        text TEXT NOT NULL,
+                        completed INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (trip_id) REFERENCES trip (id) ON DELETE CASCADE
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_trip_checklist_trip_created_at
+                    ON trip_checklist_item(trip_id, created_at, id);
+                    """
+                )
+
+                version = 12
                 _set_user_version(conn, version)
                 continue
 

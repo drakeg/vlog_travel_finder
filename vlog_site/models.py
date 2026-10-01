@@ -84,6 +84,20 @@ class Trip(Base):
     )
 
 
+class TripChecklistItem(Base):
+    __tablename__ = "trip_checklist_item"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trip_id: Mapped[int] = mapped_column(ForeignKey("trip.id"), nullable=False)
+    text: Mapped[str] = mapped_column(String, nullable=False)
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 class TripPlace(Base):
     __tablename__ = "trip_place"
 

@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
-from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace, Trip, TripPlace
+from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace, Trip, TripChecklistItem, TripPlace
 from ..services.mail_service import send_contact_email_if_configured
 from ..services.markdown_service import render_markdown
 from ..services.settings_service import get_setting
@@ -552,6 +552,19 @@ def trip_detail(trip_id: int) -> str:
     db = get_session(current_app)
     trip = _current_user_trip_or_404(db, trip_id)
     stops, day_groups, unscheduled_stops = _trip_itinerary_data(db, trip)
+    checklist_items = (
+        db.execute(
+            select(TripChecklistItem)
+            .where(TripChecklistItem.trip_id == trip.id)
+            .order_by(
+                TripChecklistItem.created_at.asc(),
+                TripChecklistItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    checklist_completed = sum(1 for item in checklist_items if item.completed)
     user_id = int(session["user_id"])
     other_trips = (
         db.execute(
@@ -570,7 +583,77 @@ def trip_detail(trip_id: int) -> str:
         day_groups=day_groups,
         unscheduled_stops=unscheduled_stops,
         other_trips=other_trips,
+        checklist_items=checklist_items,
+        checklist_completed=checklist_completed,
+        checklist_remaining=len(checklist_items) - checklist_completed,
     )
+
+
+@public_bp.route("/trips/<int:trip_id>/checklist", methods=["POST"])
+@login_required
+def trip_checklist_add(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    item_text = clean_str(request.form.get("text"))
+    if not item_text:
+        flash("Checklist item is required", "error")
+    else:
+        db.add(TripChecklistItem(trip_id=trip.id, text=item_text))
+        db.commit()
+        flash("Checklist item added", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route(
+    "/trips/<int:trip_id>/checklist/<int:item_id>/toggle",
+    methods=["POST"],
+)
+@login_required
+def trip_checklist_toggle(trip_id: int, item_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    item = (
+        db.execute(
+            select(TripChecklistItem).where(
+                TripChecklistItem.id == item_id,
+                TripChecklistItem.trip_id == trip.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if item is None:
+        abort(404)
+    item.completed = not item.completed
+    db.commit()
+    flash("Checklist updated", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route(
+    "/trips/<int:trip_id>/checklist/<int:item_id>/delete",
+    methods=["POST"],
+)
+@login_required
+def trip_checklist_delete(trip_id: int, item_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    item = (
+        db.execute(
+            select(TripChecklistItem).where(
+                TripChecklistItem.id == item_id,
+                TripChecklistItem.trip_id == trip.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if item is None:
+        abort(404)
+    db.delete(item)
+    db.commit()
+    flash("Checklist item deleted", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
 @public_bp.route("/trips/<int:trip_id>/print")
