@@ -1,7 +1,7 @@
 from vlog_site.blueprints.public import _google_maps_route_url
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
-from vlog_site.models import PageView, Place, SavedPlace, Trip, TripPlace
+from vlog_site.models import PageView, Place, SavedPlace, Trip, TripChecklistItem, TripPlace
 from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
@@ -2468,4 +2468,101 @@ def test_copy_selected_stops_rejects_cross_user_target(client, app, seeded_conte
             "action": "copy",
             "target_trip_id": str(target_id),
         },
+    ).status_code == 404
+
+
+def test_trip_checklist_crud_toggle_counts_and_order(client, app):
+    client.post(
+        "/register",
+        data={"email": "checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Checklist Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Checklist Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Pack chargers"})
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Check tire pressure"})
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.text for item in items] == ["Pack chargers", "Check tire pressure"]
+        first_id, second_id = items[0].id, items[1].id
+
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "0 complete" in body
+    assert "2 remaining" in body
+
+    client.post(f"/trips/{trip_id}/checklist/{first_id}/toggle")
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "1 complete" in body
+    assert "1 remaining" in body
+    assert "Pack chargers" in body
+
+    client.post(f"/trips/{trip_id}/checklist/{first_id}/toggle")
+    with app.app_context():
+        db = get_session(app)
+        first = db.get(TripChecklistItem, first_id)
+        assert first is not None
+        assert first.completed is False
+
+    client.post(f"/trips/{trip_id}/checklist/{second_id}/delete")
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripChecklistItem, second_id) is None
+        assert db.get(TripChecklistItem, first_id) is not None
+
+
+def test_trip_checklist_rejects_blank_items_and_cross_user_access(client, app):
+    client.post(
+        "/register",
+        data={"email": "check-owner@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Checklist"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Checklist").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    blank = client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "   "},
+        follow_redirects=True,
+    )
+    assert "Checklist item is required" in blank.get_data(as_text=True)
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Owner task"})
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=trip_id).first()
+        assert item is not None
+        item_id = item.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "check-intruder@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    assert client.post(
+        f"/trips/{trip_id}/checklist", data={"text": "Intruder task"}
+    ).status_code == 404
+    assert client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/toggle"
+    ).status_code == 404
+    assert client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/delete"
     ).status_code == 404
