@@ -75,6 +75,66 @@
     </div>
   </div>
 
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-sm-row align-items-sm-baseline justify-content-between gap-2 mb-3">
+        <h2 class="h5 mb-0">Trip checklist</h2>
+        <div class="text-muted small">
+          {{ checklist_completed }} complete · {{ checklist_remaining }} remaining
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('public.trip_checklist_add', trip_id=trip.id) }}" class="row g-2 mb-3">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+        <div class="col-12 col-md">
+          <label class="visually-hidden" for="checklist-text">Checklist item</label>
+          <input
+            class="form-control"
+            id="checklist-text"
+            type="text"
+            name="text"
+            maxlength="500"
+            placeholder="Add a preparation task"
+            required
+          />
+        </div>
+        <div class="col-12 col-md-auto d-grid">
+          <button class="btn btn-outline-primary" type="submit">
+            <i class="fa-solid fa-plus me-1"></i>Add item
+          </button>
+        </div>
+      </form>
+
+      {% if checklist_items %}
+        <div class="list-group">
+          {% for item in checklist_items %}
+            <div class="list-group-item d-flex align-items-center justify-content-between gap-3">
+              <form method="post" action="{{ url_for('public.trip_checklist_toggle', trip_id=trip.id, item_id=item.id) }}" class="d-flex align-items-center gap-2 flex-grow-1 mb-0">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                <button
+                  class="btn btn-sm {% if item.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                  type="submit"
+                  aria-label="{% if item.completed %}Mark incomplete{% else %}Mark complete{% endif %}: {{ item.text }}"
+                >
+                  <i class="fa-solid {% if item.completed %}fa-check{% else %}fa-circle{% endif %}"></i>
+                </button>
+                <span class="{% if item.completed %}text-decoration-line-through text-body-secondary{% endif %}">{{ item.text }}</span>
+              </form>
+              <form method="post" action="{{ url_for('public.trip_checklist_delete', trip_id=trip.id, item_id=item.id) }}" class="mb-0">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete checklist item">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-body-secondary small">No checklist items yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
   {% macro render_stop(stop) %}
     {% set place = stop.place %}
     <div class="card shadow-sm">
