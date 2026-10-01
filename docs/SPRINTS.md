@@ -521,24 +521,47 @@ Deferred:
 
 ### Sprint 19 — Copy selected stops between trips
 
-Status: In progress
+Status: Complete
 
 Planning issue: #170
 
-Current work:
+Shipped:
 
-- #171 — copy selected source stops to another owned trip;
-- append copied stops after the target trip's existing stops;
-- preserve source manual order for newly appended stops;
-- skip duplicate target memberships;
-- preserve notes and planned time;
-- retain planned date only when valid for the target trip's date range;
-- keep source trip data unchanged and enforce source/target ownership;
-- add ordering, duplicate, schedule compatibility, independence, and ownership coverage.
+- copying selected itinerary stops to another owned trip;
+- source-order append behavior after existing target stops;
+- duplicate membership skipping;
+- notes and planned-time preservation;
+- target-range validation for copied planned dates;
+- incompatible copied dates cleared without touching source data;
+- independent ownership checks for source and target trips;
+- ordering, duplicate, schedule-compatibility, independence, and cross-user regression coverage.
 
-Out of scope:
+Deferred:
 
-- moving/removing stops from the source trip;
+- moving/removing source stops;
 - cross-user trip sharing;
 - automatic date shifting;
 - route optimization.
+
+### Sprint 20 — Trip checklist
+
+Status: In progress
+
+Planning issue: #173
+
+Current work:
+
+- #174 — add private checklist items to owned trips;
+- add, toggle, and delete checklist items;
+- show completed and remaining counts;
+- preserve deterministic creation order;
+- enforce trip ownership on every checklist mutation;
+- add SQLite schema version 12 without wiping existing trip data;
+- add CRUD, toggle, count, order, ownership, and migration regression coverage.
+
+Out of scope:
+
+- shared checklists;
+- recurring checklist templates;
+- due dates/reminders;
+- attachments.
