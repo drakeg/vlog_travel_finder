@@ -498,24 +498,47 @@ Deferred:
 
 ### Sprint 18 — Sequential itinerary timing
 
-Status: In progress
+Status: Complete
 
 Planning issue: #167
 
-Current work:
+Shipped:
 
-- #168 — assign a starting time and interval to selected stops;
-- generate planned times in manual stop order;
-- preserve existing planned dates, notes, and positions;
-- validate intervals from 5 through 720 minutes;
-- reject malformed times/intervals before any update;
-- prevent generated times from rolling into the next day;
-- ignore non-member IDs and enforce trip ownership;
-- add ordering, validation, preservation, and ownership regression coverage.
+- sequential planned-time assignment for selected stops;
+- manual stop order used for generated times;
+- preserved planned dates, notes, and positions;
+- interval validation from 5 through 720 minutes;
+- atomic malformed/overflow rejection before updates;
+- cross-user protection and safe non-member ID handling;
+- ordering, preservation, overflow, validation, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - automatic travel-time calculation;
 - Google Directions API calls;
 - overnight itinerary timing;
 - drag-and-drop scheduling.
+
+### Sprint 19 — Copy selected stops between trips
+
+Status: In progress
+
+Planning issue: #170
+
+Current work:
+
+- #171 — copy selected source stops to another owned trip;
+- append copied stops after the target trip's existing stops;
+- preserve source manual order for newly appended stops;
+- skip duplicate target memberships;
+- preserve notes and planned time;
+- retain planned date only when valid for the target trip's date range;
+- keep source trip data unchanged and enforce source/target ownership;
+- add ordering, duplicate, schedule compatibility, independence, and ownership coverage.
+
+Out of scope:
+
+- moving/removing stops from the source trip;
+- cross-user trip sharing;
+- automatic date shifting;
+- route optimization.
