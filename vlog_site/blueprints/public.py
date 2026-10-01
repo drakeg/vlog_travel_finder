@@ -552,6 +552,16 @@ def trip_detail(trip_id: int) -> str:
     db = get_session(current_app)
     trip = _current_user_trip_or_404(db, trip_id)
     stops, day_groups, unscheduled_stops = _trip_itinerary_data(db, trip)
+    user_id = int(session["user_id"])
+    other_trips = (
+        db.execute(
+            select(Trip)
+            .where(Trip.user_id == user_id, Trip.id != trip.id)
+            .order_by(Trip.created_at.desc(), Trip.id.desc())
+        )
+        .scalars()
+        .all()
+    )
 
     return render_template(
         "public/trip_detail.html",
@@ -559,6 +569,7 @@ def trip_detail(trip_id: int) -> str:
         stops=stops,
         day_groups=day_groups,
         unscheduled_stops=unscheduled_stops,
+        other_trips=other_trips,
     )
 
 
@@ -926,6 +937,68 @@ def trip_bulk_schedule(trip_id: int):
         return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
     action = clean_str(request.form.get("action")) or "date"
+    if action == "copy":
+        try:
+            target_trip_id = int(request.form.get("target_trip_id", ""))
+        except ValueError:
+            abort(404)
+
+        target_trip = (
+            db.execute(
+                select(Trip).where(
+                    Trip.id == target_trip_id,
+                    Trip.user_id == int(session["user_id"]),
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if target_trip is None or target_trip.id == trip.id:
+            abort(404)
+
+        existing_place_ids = set(
+            db.execute(
+                select(TripPlace.place_id).where(TripPlace.trip_id == target_trip.id)
+            ).scalars().all()
+        )
+        target_positions = db.execute(
+            select(TripPlace.position).where(TripPlace.trip_id == target_trip.id)
+        ).scalars().all()
+        next_position = max(target_positions, default=0) + 1
+
+        copied = 0
+        for row in rows:
+            if row.place_id in existing_place_ids:
+                continue
+            planned_date = (
+                row.planned_date
+                if _stop_date_within_trip(target_trip, row.planned_date)
+                else None
+            )
+            db.add(
+                TripPlace(
+                    trip_id=target_trip.id,
+                    place_id=row.place_id,
+                    position=next_position,
+                    notes=row.notes,
+                    planned_date=planned_date,
+                    planned_time=row.planned_time,
+                )
+            )
+            existing_place_ids.add(row.place_id)
+            next_position += 1
+            copied += 1
+
+        if copied:
+            db.commit()
+            flash(
+                f"Copied {copied} stop{'s' if copied != 1 else ''} to {target_trip.name}",
+                "info",
+            )
+        else:
+            flash("No new stops were copied", "info")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
     if action == "times":
         try:
             start_time = _clean_hhmm_time(request.form.get("start_time"))
