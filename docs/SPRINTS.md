@@ -475,23 +475,47 @@ Deferred:
 
 ### Sprint 17 — Bulk itinerary scheduling
 
-Status: In progress
+Status: Complete
 
 Planning issue: #163
 
-Current work:
+Shipped:
 
-- #164 — select multiple stops from the itinerary;
-- assign one planned date to all selected valid stops;
-- clear planned dates in bulk by leaving the date blank;
-- preserve existing planned times, order, and notes;
-- validate dates against the configured trip range before any update;
-- ignore non-member stop IDs and enforce trip ownership;
-- add assign, clear, range, ordering, and ownership regression coverage.
+- selectable itinerary stops;
+- bulk planned-date assignment and clearing;
+- preservation of planned times, order, and notes;
+- atomic trip-range validation;
+- safe handling of invalid/non-member stop IDs;
+- ownership enforcement;
+- assign, clear, range, ordering, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - bulk time assignment;
 - drag-and-drop between days;
 - automatic route optimization;
 - shared/collaborative trips.
+
+### Sprint 18 — Sequential itinerary timing
+
+Status: In progress
+
+Planning issue: #167
+
+Current work:
+
+- #168 — assign a starting time and interval to selected stops;
+- generate planned times in manual stop order;
+- preserve existing planned dates, notes, and positions;
+- validate intervals from 5 through 720 minutes;
+- reject malformed times/intervals before any update;
+- prevent generated times from rolling into the next day;
+- ignore non-member IDs and enforce trip ownership;
+- add ordering, validation, preservation, and ownership regression coverage.
+
+Out of scope:
+
+- automatic travel-time calculation;
+- Google Directions API calls;
+- overnight itinerary timing;
+- drag-and-drop scheduling.
