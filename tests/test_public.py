@@ -1981,3 +1981,172 @@ def test_trip_day_route_button_requires_two_routable_stops(client, app):
     )
     body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
     assert body.count("Open day route") == 0
+
+
+def test_bulk_schedule_assigns_date_and_preserves_times_and_order(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Bulk Schedule First")
+        second = Place(name="Bulk Schedule Second")
+        db.add_all([first, second])
+        db.commit()
+        first_id, second_id = first.id, second.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-schedule@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Bulk Schedule Trip", "start_date": "2026-12-01", "end_date": "2026-12-10"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Bulk Schedule Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id, planned_time in [(first_id, "09:00"), (second_id, "13:30")]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+        client.post(
+            f"/trips/{trip_id}/places/{place_id}/schedule",
+            data={"planned_date": "", "planned_time": planned_time},
+        )
+
+    resp = client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={"place_ids": [str(first_id), str(second_id)], "planned_date": "2026-12-05"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert "Scheduled 2 stops" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        first_row = db.get(TripPlace, (trip_id, first_id))
+        second_row = db.get(TripPlace, (trip_id, second_id))
+        assert first_row is not None and second_row is not None
+        assert first_row.planned_date == second_row.planned_date == "2026-12-05"
+        assert first_row.planned_time == "09:00"
+        assert second_row.planned_time == "13:30"
+        assert first_row.position == 1
+        assert second_row.position == 2
+
+
+def test_bulk_schedule_can_clear_dates_without_clearing_times(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={"email": "bulk-clear@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Bulk Clear Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Bulk Clear Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{trip_id}/places/{place_id}/schedule",
+        data={"planned_date": "2026-12-05", "planned_time": "10:15"},
+    )
+    client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={"place_ids": str(place_id), "planned_date": ""},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        row = db.get(TripPlace, (trip_id, place_id))
+        assert row is not None
+        assert row.planned_date is None
+        assert row.planned_time == "10:15"
+
+
+def test_bulk_schedule_rejects_out_of_range_without_partial_updates(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Range First")
+        second = Place(name="Range Second")
+        db.add_all([first, second])
+        db.commit()
+        first_id, second_id = first.id, second.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-range@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Range Trip", "start_date": "2026-12-01", "end_date": "2026-12-03"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Range Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for place_id in [first_id, second_id]:
+        client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    resp = client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={"place_ids": [str(first_id), str(second_id)], "planned_date": "2026-12-20"},
+        follow_redirects=True,
+    )
+    assert "Stop date must fall within the trip date range" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripPlace, (trip_id, first_id)).planned_date is None
+        assert db.get(TripPlace, (trip_id, second_id)).planned_date is None
+
+
+def test_bulk_schedule_ignores_nonmember_ids_and_enforces_trip_ownership(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    with app.app_context():
+        db = get_session(app)
+        other_place = Place(name="Not In Trip")
+        db.add(other_place)
+        db.commit()
+        other_place_id = other_place.id
+
+    client.post(
+        "/register",
+        data={"email": "bulk-owner@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owned Bulk Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owned Bulk Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+    client.post(f"/trips/{trip_id}/places/{place_id}/add")
+
+    client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={"place_ids": [str(place_id), str(other_place_id)], "planned_date": "2026-12-05"},
+    )
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripPlace, (trip_id, place_id)).planned_date == "2026-12-05"
+        assert db.get(TripPlace, (trip_id, other_place_id)) is None
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "bulk-intruder@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    assert client.post(
+        f"/trips/{trip_id}/schedule-bulk",
+        data={"place_ids": str(place_id), "planned_date": "2026-12-06"},
+    ).status_code == 404

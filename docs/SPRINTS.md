@@ -451,24 +451,47 @@ Deferred:
 
 ### Sprint 16 — Daily Google Maps routes
 
-Status: In progress
+Status: Complete
 
 Planning issue: #160
 
-Current work:
+Shipped:
 
-- #161 — generate Google Maps driving URLs from each scheduled day's ordered stops;
-- prefer coordinates and fall back to address text;
-- exclude stops without usable location data;
-- show route actions only when two or more routable stops remain;
-- keep manual itinerary order as origin, waypoints, and destination;
-- require no Maps API key or network request from the server;
-- add route-generation and UI regression coverage.
+- Google Maps driving URLs for scheduled itinerary days;
+- manual stop order preserved as origin, waypoints, and destination;
+- coordinate-first routing with address fallback;
+- safe exclusion of unroutable stops;
+- route actions only when at least two routable stops remain;
+- no Maps API key, paid service, or server-side route request;
+- route-generation and itinerary UI regression coverage.
 
-Out of scope:
+Deferred:
 
 - Google Directions API calls;
 - automatic route optimization;
 - distance/time calculations;
 - traffic-aware routing;
 - paid external services.
+
+### Sprint 17 — Bulk itinerary scheduling
+
+Status: In progress
+
+Planning issue: #163
+
+Current work:
+
+- #164 — select multiple stops from the itinerary;
+- assign one planned date to all selected valid stops;
+- clear planned dates in bulk by leaving the date blank;
+- preserve existing planned times, order, and notes;
+- validate dates against the configured trip range before any update;
+- ignore non-member stop IDs and enforce trip ownership;
+- add assign, clear, range, ordering, and ownership regression coverage.
+
+Out of scope:
+
+- bulk time assignment;
+- drag-and-drop between days;
+- automatic route optimization;
+- shared/collaborative trips.
