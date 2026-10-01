@@ -2316,3 +2316,156 @@ def test_bulk_sequential_times_validate_interval_and_ignore_nonmembers(client, a
             "interval_minutes": "30",
         },
     ).status_code == 404
+
+
+def test_copy_selected_stops_appends_in_source_order_and_skips_duplicates(client, app):
+    with app.app_context():
+        db = get_session(app)
+        first = Place(name="Copy First")
+        second = Place(name="Copy Second")
+        third = Place(name="Copy Third")
+        db.add_all([first, second, third])
+        db.commit()
+        first_id, second_id, third_id = first.id, second.id, third.id
+
+    client.post(
+        "/register",
+        data={"email": "copy-stops@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Copy Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Copy Target"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Copy Source").first()
+        target = db.query(Trip).filter_by(name="Copy Target").first()
+        assert source is not None and target is not None
+        source_id, target_id = source.id, target.id
+
+    for place_id in [first_id, second_id, third_id]:
+        client.post(f"/trips/{source_id}/places/{place_id}/add")
+    client.post(f"/trips/{source_id}/places/{third_id}/move/up")
+    client.post(f"/trips/{source_id}/places/{third_id}/move/up")
+    client.post(f"/trips/{target_id}/places/{first_id}/add")
+
+    resp = client.post(
+        f"/trips/{source_id}/schedule-bulk",
+        data={
+            "place_ids": [str(first_id), str(second_id), str(third_id)],
+            "action": "copy",
+            "target_trip_id": str(target_id),
+        },
+        follow_redirects=True,
+    )
+    assert "Copied 2 stops to Copy Target" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        target_rows = (
+            db.query(TripPlace)
+            .filter_by(trip_id=target_id)
+            .order_by(TripPlace.position.asc())
+            .all()
+        )
+        assert [row.place_id for row in target_rows] == [first_id, third_id, second_id]
+
+
+def test_copy_selected_stops_preserves_notes_time_and_clears_incompatible_date(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+    client.post(
+        "/register",
+        data={"email": "copy-schedule@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Scheduled Source", "start_date": "2027-01-01", "end_date": "2027-01-10"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Scheduled Target", "start_date": "2027-02-01", "end_date": "2027-02-10"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Scheduled Source").first()
+        target = db.query(Trip).filter_by(name="Scheduled Target").first()
+        assert source is not None and target is not None
+        source_id, target_id = source.id, target.id
+
+    client.post(f"/trips/{source_id}/places/{place_id}/add")
+    client.post(
+        f"/trips/{source_id}/places/{place_id}/schedule",
+        data={"planned_date": "2027-01-05", "planned_time": "14:15"},
+    )
+    client.post(
+        f"/trips/{source_id}/places/{place_id}/notes",
+        data={"notes": "Reservation note"},
+    )
+
+    client.post(
+        f"/trips/{source_id}/schedule-bulk",
+        data={
+            "place_ids": str(place_id),
+            "action": "copy",
+            "target_trip_id": str(target_id),
+        },
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        source_row = db.get(TripPlace, (source_id, place_id))
+        target_row = db.get(TripPlace, (target_id, place_id))
+        assert source_row is not None and target_row is not None
+        assert source_row.planned_date == "2027-01-05"
+        assert source_row.planned_time == "14:15"
+        assert source_row.notes == "Reservation note"
+        assert target_row.planned_date is None
+        assert target_row.planned_time == "14:15"
+        assert target_row.notes == "Reservation note"
+
+
+def test_copy_selected_stops_rejects_cross_user_target(client, app, seeded_content):
+    place_id = seeded_content["place"].id
+
+    client.post(
+        "/register",
+        data={"email": "copy-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Source"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Owner A Source").first()
+        assert source is not None
+        source_id = source.id
+    client.post(f"/trips/{source_id}/places/{place_id}/add")
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "copy-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Target"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        target = db.query(Trip).filter_by(name="Owner B Target").first()
+        assert target is not None
+        target_id = target.id
+
+    client.post("/logout")
+    client.post(
+        "/login",
+        data={"email": "copy-owner-a@example.com", "password": "pw123456"},
+        follow_redirects=True,
+    )
+    assert client.post(
+        f"/trips/{source_id}/schedule-bulk",
+        data={
+            "place_ids": str(place_id),
+            "action": "copy",
+            "target_trip_id": str(target_id),
+        },
+    ).status_code == 404
