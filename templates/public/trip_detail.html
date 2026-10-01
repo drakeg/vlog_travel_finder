@@ -88,7 +88,7 @@
             id="bulk-stop-{{ place.id }}"
             form="bulk-schedule-form"
           />
-          <label class="form-check-label small" for="bulk-stop-{{ place.id }}">Select for bulk scheduling</label>
+          <label class="form-check-label small" for="bulk-stop-{{ place.id }}">Select for bulk actions</label>
         </div>
         <div class="d-flex flex-column flex-md-row align-items-md-start justify-content-between gap-3">
           <div class="d-flex gap-3">
@@ -223,6 +223,28 @@
             </div>
             <div class="form-text">Choose a starting time and minutes between stops. Dates are preserved.</div>
           </div>
+
+          {% if other_trips %}
+            <div class="col-12">
+              <label class="form-label" for="bulk-target-trip">Copy selected stops to another trip</label>
+              <div class="row g-2">
+                <div class="col-12 col-md-8">
+                  <select class="form-select" id="bulk-target-trip" name="target_trip_id">
+                    <option value="">Choose a target trip</option>
+                    {% for target_trip in other_trips %}
+                      <option value="{{ target_trip.id }}">{{ target_trip.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-4 d-grid">
+                  <button class="btn btn-outline-secondary" type="submit" name="action" value="copy">
+                    <i class="fa-regular fa-copy me-1"></i>Copy selected
+                  </button>
+                </div>
+              </div>
+              <div class="form-text">New stops append to the target trip. Existing target stops are skipped.</div>
+            </div>
+          {% endif %}
         </div>
       </div>
     </form>
