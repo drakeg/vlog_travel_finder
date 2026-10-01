@@ -178,23 +178,50 @@
     <form id="bulk-schedule-form" method="post" action="{{ url_for('public.trip_bulk_schedule', trip_id=trip.id) }}" class="card shadow-sm mb-4">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
       <div class="card-body">
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-sm-6 col-md-4">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-5">
             <label class="form-label" for="bulk-planned-date">Set selected stops to date</label>
-            <input
-              class="form-control"
-              id="bulk-planned-date"
-              type="date"
-              name="planned_date"
-              {% if trip.start_date %}min="{{ trip.start_date }}"{% endif %}
-              {% if trip.end_date %}max="{{ trip.end_date }}"{% endif %}
-            />
-            <div class="form-text">Leave blank to clear the selected stops' dates. Existing planned times are preserved.</div>
+            <div class="input-group">
+              <input
+                class="form-control"
+                id="bulk-planned-date"
+                type="date"
+                name="planned_date"
+                {% if trip.start_date %}min="{{ trip.start_date }}"{% endif %}
+                {% if trip.end_date %}max="{{ trip.end_date }}"{% endif %}
+              />
+              <button class="btn btn-outline-primary" type="submit" name="action" value="date">
+                <i class="fa-regular fa-calendar-check me-1"></i>Apply date
+              </button>
+            </div>
+            <div class="form-text">Leave blank to clear dates. Planned times are preserved.</div>
           </div>
-          <div class="col-12 col-sm-auto">
-            <button class="btn btn-outline-primary" type="submit">
-              <i class="fa-regular fa-calendar-check me-1"></i>Apply to selected
-            </button>
+
+          <div class="col-12 col-md-7">
+            <label class="form-label" for="bulk-start-time">Set sequential times in stop order</label>
+            <div class="row g-2">
+              <div class="col-5">
+                <input class="form-control" id="bulk-start-time" type="time" name="start_time" aria-label="Starting time" />
+              </div>
+              <div class="col-3">
+                <input
+                  class="form-control"
+                  type="number"
+                  name="interval_minutes"
+                  min="5"
+                  max="720"
+                  step="5"
+                  value="60"
+                  aria-label="Minutes between stops"
+                />
+              </div>
+              <div class="col-4 d-grid">
+                <button class="btn btn-outline-secondary" type="submit" name="action" value="times">
+                  <i class="fa-regular fa-clock me-1"></i>Apply times
+                </button>
+              </div>
+            </div>
+            <div class="form-text">Choose a starting time and minutes between stops. Dates are preserved.</div>
           </div>
         </div>
       </div>
