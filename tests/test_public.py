@@ -2566,3 +2566,129 @@ def test_trip_checklist_rejects_blank_items_and_cross_user_access(client, app):
     assert client.post(
         f"/trips/{trip_id}/checklist/{item_id}/delete"
     ).status_code == 404
+
+
+def test_trip_duplicate_copies_checklist_in_order_and_resets_completion(client, app):
+    client.post(
+        "/register",
+        data={"email": "dup-checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Checklist Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Checklist Source").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Pack cables"})
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Fill water"})
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Check propane"})
+
+    with app.app_context():
+        db = get_session(app)
+        source_items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=source_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert len(source_items) == 3
+        first_id = source_items[0].id
+
+    client.post(f"/trips/{source_id}/checklist/{first_id}/toggle")
+    client.post(f"/trips/{source_id}/duplicate", follow_redirects=False)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.get(Trip, source_id)
+        copy = db.query(Trip).filter_by(name="Checklist Source (Copy)").first()
+        assert source is not None and copy is not None
+
+        original_items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=source.id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        copied_items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=copy.id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.text for item in copied_items] == [
+            "Pack cables",
+            "Fill water",
+            "Check propane",
+        ]
+        assert [item.completed for item in copied_items] == [False, False, False]
+        assert [item.completed for item in original_items] == [True, False, False]
+
+
+def test_date_shifted_duplicate_also_copies_checklist(client, app):
+    client.post(
+        "/register",
+        data={"email": "dup-shift-checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Shift Checklist Source",
+            "start_date": "2027-03-01",
+            "end_date": "2027-03-03",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Shift Checklist Source").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Reserve campground"})
+    client.post(
+        f"/trips/{source_id}/duplicate",
+        data={"new_start_date": "2027-04-10"},
+        follow_redirects=False,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        copy = db.query(Trip).filter_by(name="Shift Checklist Source (Copy)").first()
+        assert copy is not None
+        assert copy.start_date == "2027-04-10"
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=copy.id)
+            .order_by(TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.text for item in items] == ["Reserve campground"]
+        assert items[0].completed is False
+
+
+def test_trip_duplicate_with_empty_checklist_stays_empty(client, app):
+    client.post(
+        "/register",
+        data={"email": "dup-empty-checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Empty Checklist Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Empty Checklist Source").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/duplicate", follow_redirects=False)
+
+    with app.app_context():
+        db = get_session(app)
+        copy = db.query(Trip).filter_by(name="Empty Checklist Source (Copy)").first()
+        assert copy is not None
+        assert db.query(TripChecklistItem).filter_by(trip_id=copy.id).count() == 0

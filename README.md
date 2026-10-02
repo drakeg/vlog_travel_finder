@@ -29,6 +29,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Selected stops can receive sequential planned times from a chosen start time and interval
   - Selected itinerary stops can be copied into another owned trip without duplicating existing places
   - Trips include a private checklist for preparation tasks with completion tracking
+  - Duplicating a trip copies its checklist items and resets them to incomplete
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
   - Itinerary days can open their ordered routable stops as a Google Maps driving route without a paid API
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
