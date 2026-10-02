@@ -545,23 +545,46 @@ Deferred:
 
 ### Sprint 20 — Trip checklist
 
-Status: In progress
+Status: Complete
 
 Planning issue: #173
 
-Current work:
+Shipped:
 
-- #174 — add private checklist items to owned trips;
-- add, toggle, and delete checklist items;
-- show completed and remaining counts;
-- preserve deterministic creation order;
-- enforce trip ownership on every checklist mutation;
-- add SQLite schema version 12 without wiping existing trip data;
-- add CRUD, toggle, count, order, ownership, and migration regression coverage.
+- private per-trip checklist items;
+- add, complete/incomplete toggle, and delete actions;
+- completed/remaining counts;
+- deterministic creation ordering;
+- ownership enforcement on every checklist mutation;
+- non-destructive SQLite schema version 12;
+- CRUD, toggle, count, ordering, blank-item, ownership, and migration regression coverage.
 
-Out of scope:
+Deferred:
 
 - shared checklists;
 - recurring checklist templates;
 - due dates/reminders;
 - attachments.
+
+### Sprint 21 — Checklist-aware trip duplication
+
+Status: In progress
+
+Planning issue: #176
+
+Current work:
+
+- #177 — copy checklist item text when duplicating a trip;
+- preserve checklist item order;
+- reset copied checklist items to incomplete;
+- leave source checklist state unchanged;
+- support both standard and date-shifted trip duplication;
+- keep empty checklists empty;
+- add order, reset, source-independence, date-shift, and empty-state regression coverage.
+
+Out of scope:
+
+- cross-user checklist sharing;
+- checklist templates independent of trips;
+- due dates/reminders;
+- partial checklist selection during duplication.
