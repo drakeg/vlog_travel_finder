@@ -893,6 +893,27 @@ def trip_duplicate(trip_id: int):
             )
         )
 
+    source_checklist = (
+        db.execute(
+            select(TripChecklistItem)
+            .where(TripChecklistItem.trip_id == source.id)
+            .order_by(
+                TripChecklistItem.created_at.asc(),
+                TripChecklistItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for item in source_checklist:
+        db.add(
+            TripChecklistItem(
+                trip_id=duplicate.id,
+                text=item.text,
+                completed=False,
+            )
+        )
+
     db.commit()
     flash("Trip duplicated", "info")
     return redirect(url_for("public.trip_detail", trip_id=duplicate.id))
