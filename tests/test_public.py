@@ -2692,3 +2692,149 @@ def test_trip_duplicate_with_empty_checklist_stays_empty(client, app):
         copy = db.query(Trip).filter_by(name="Empty Checklist Source (Copy)").first()
         assert copy is not None
         assert db.query(TripChecklistItem).filter_by(trip_id=copy.id).count() == 0
+
+
+def test_checklist_import_appends_in_source_order_skips_duplicates_and_resets_state(client, app):
+    client.post(
+        "/register",
+        data={"email": "import-checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Checklist Import Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Checklist Import Target"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Checklist Import Source").first()
+        target = db.query(Trip).filter_by(name="Checklist Import Target").first()
+        assert source is not None and target is not None
+        source_id, target_id = source.id, target.id
+
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Pack chargers"})
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Fill water"})
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Check propane"})
+    client.post(f"/trips/{target_id}/checklist", data={"text": "Existing target task"})
+    client.post(f"/trips/{target_id}/checklist", data={"text": "pack CHARGERS"})
+
+    with app.app_context():
+        db = get_session(app)
+        source_first = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=source_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .first()
+        )
+        assert source_first is not None
+        source_first_id = source_first.id
+
+    client.post(f"/trips/{source_id}/checklist/{source_first_id}/toggle")
+
+    resp = client.post(
+        f"/trips/{target_id}/checklist/import",
+        data={"source_trip_id": str(source_id)},
+        follow_redirects=True,
+    )
+    assert "Imported 2 checklist items" in resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source_items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=source_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        target_items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=target_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.text for item in target_items] == [
+            "Existing target task",
+            "pack CHARGERS",
+            "Fill water",
+            "Check propane",
+        ]
+        assert [item.completed for item in target_items] == [False, False, False, False]
+        assert [item.completed for item in source_items] == [True, False, False]
+
+
+def test_checklist_import_reports_nothing_new_for_empty_or_duplicate_source(client, app):
+    client.post(
+        "/register",
+        data={"email": "import-empty@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Empty Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Duplicate Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Import Target"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        empty = db.query(Trip).filter_by(name="Empty Source").first()
+        duplicate = db.query(Trip).filter_by(name="Duplicate Source").first()
+        target = db.query(Trip).filter_by(name="Import Target").first()
+        assert empty is not None and duplicate is not None and target is not None
+        empty_id, duplicate_id, target_id = empty.id, duplicate.id, target.id
+
+    empty_resp = client.post(
+        f"/trips/{target_id}/checklist/import",
+        data={"source_trip_id": str(empty_id)},
+        follow_redirects=True,
+    )
+    assert "No new checklist items to import" in empty_resp.get_data(as_text=True)
+
+    client.post(f"/trips/{duplicate_id}/checklist", data={"text": "Same task"})
+    client.post(f"/trips/{target_id}/checklist", data={"text": "same TASK"})
+
+    duplicate_resp = client.post(
+        f"/trips/{target_id}/checklist/import",
+        data={"source_trip_id": str(duplicate_id)},
+        follow_redirects=True,
+    )
+    assert "No new checklist items to import" in duplicate_resp.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(TripChecklistItem).filter_by(trip_id=target_id).count() == 1
+
+
+def test_checklist_import_rejects_cross_user_source(client, app):
+    client.post(
+        "/register",
+        data={"email": "import-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Target"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        target = db.query(Trip).filter_by(name="Owner A Target").first()
+        assert target is not None
+        target_id = target.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "import-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Source"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Owner B Source").first()
+        assert source is not None
+        source_id = source.id
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Private task"})
+
+    client.post("/logout")
+    client.post(
+        "/login",
+        data={"email": "import-owner-a@example.com", "password": "pw123456"},
+        follow_redirects=True,
+    )
+
+    assert client.post(
+        f"/trips/{target_id}/checklist/import",
+        data={"source_trip_id": str(source_id)},
+    ).status_code == 404
