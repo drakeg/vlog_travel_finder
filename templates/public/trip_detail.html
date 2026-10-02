@@ -105,6 +105,26 @@
         </div>
       </form>
 
+      {% if other_trips %}
+        <form method="post" action="{{ url_for('public.trip_checklist_import', trip_id=trip.id) }}" class="row g-2 mb-3">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+          <div class="col-12 col-md">
+            <label class="visually-hidden" for="checklist-source-trip">Checklist source trip</label>
+            <select class="form-select" id="checklist-source-trip" name="source_trip_id" required>
+              <option value="">Import checklist from another trip…</option>
+              {% for source_trip in other_trips %}
+                <option value="{{ source_trip.id }}">{{ source_trip.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-auto d-grid">
+            <button class="btn btn-outline-secondary" type="submit">
+              <i class="fa-solid fa-file-import me-1"></i>Import checklist
+            </button>
+          </div>
+        </form>
+      {% endif %}
+
       {% if checklist_items %}
         <div class="list-group">
           {% for item in checklist_items %}

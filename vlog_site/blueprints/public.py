@@ -604,6 +604,79 @@ def trip_checklist_add(trip_id: int):
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
+@public_bp.route("/trips/<int:trip_id>/checklist/import", methods=["POST"])
+@login_required
+def trip_checklist_import(trip_id: int):
+    db = get_session(current_app)
+    target_trip = _current_user_trip_or_404(db, trip_id)
+
+    try:
+        source_trip_id = int(request.form.get("source_trip_id", ""))
+    except ValueError:
+        abort(404)
+
+    source_trip = (
+        db.execute(
+            select(Trip).where(
+                Trip.id == source_trip_id,
+                Trip.user_id == int(session["user_id"]),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if source_trip is None or source_trip.id == target_trip.id:
+        abort(404)
+
+    source_items = (
+        db.execute(
+            select(TripChecklistItem)
+            .where(TripChecklistItem.trip_id == source_trip.id)
+            .order_by(
+                TripChecklistItem.created_at.asc(),
+                TripChecklistItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    existing_text = {
+        item_text.casefold()
+        for item_text in db.execute(
+            select(TripChecklistItem.text).where(
+                TripChecklistItem.trip_id == target_trip.id
+            )
+        ).scalars().all()
+    }
+
+    imported = 0
+    for item in source_items:
+        normalized = item.text.casefold()
+        if normalized in existing_text:
+            continue
+        db.add(
+            TripChecklistItem(
+                trip_id=target_trip.id,
+                text=item.text,
+                completed=False,
+            )
+        )
+        existing_text.add(normalized)
+        imported += 1
+
+    if imported:
+        db.commit()
+        flash(
+            f"Imported {imported} checklist item{'s' if imported != 1 else ''}",
+            "info",
+        )
+    else:
+        flash("No new checklist items to import", "info")
+
+    return redirect(url_for("public.trip_detail", trip_id=target_trip.id))
+
+
 @public_bp.route(
     "/trips/<int:trip_id>/checklist/<int:item_id>/toggle",
     methods=["POST"],

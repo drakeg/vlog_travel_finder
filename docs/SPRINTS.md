@@ -568,23 +568,47 @@ Deferred:
 
 ### Sprint 21 — Checklist-aware trip duplication
 
-Status: In progress
+Status: Complete
 
 Planning issue: #176
 
-Current work:
+Shipped:
 
-- #177 — copy checklist item text when duplicating a trip;
-- preserve checklist item order;
-- reset copied checklist items to incomplete;
-- leave source checklist state unchanged;
-- support both standard and date-shifted trip duplication;
-- keep empty checklists empty;
-- add order, reset, source-independence, date-shift, and empty-state regression coverage.
+- checklist text copied with duplicated trips;
+- checklist order preserved;
+- copied checklist completion state reset to incomplete;
+- source checklist state left unchanged;
+- standard and date-shifted duplication both supported;
+- empty checklist behavior preserved;
+- order, reset, source-independence, date-shift, and empty-state regression coverage.
 
-Out of scope:
+Deferred:
 
 - cross-user checklist sharing;
 - checklist templates independent of trips;
 - due dates/reminders;
 - partial checklist selection during duplication.
+
+### Sprint 22 — Reuse checklists across trips
+
+Status: In progress
+
+Planning issue: #179
+
+Current work:
+
+- #180 — import checklist items from another owned trip;
+- append new tasks in source checklist order;
+- reset imported items to incomplete;
+- skip existing target task text case-insensitively;
+- leave source and existing target items unchanged;
+- report clearly when there is nothing new to import;
+- enforce ownership of both source and target trips;
+- add order, duplicate, reset, independence, ownership, and empty-source regression coverage.
+
+Out of scope:
+
+- global checklist templates;
+- cross-user checklist sharing;
+- due dates/reminders;
+- partial source-item selection.
