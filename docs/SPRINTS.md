@@ -615,24 +615,48 @@ Deferred:
 
 ### Sprint 23 — Checklist due dates
 
-Status: In progress
+Status: Complete
 
 Planning issue: #184
 
-Current work:
+Shipped:
 
-- #185 — add optional due dates to checklist items;
-- set, replace, and clear due dates;
-- show overdue and due-today status for incomplete items;
-- keep completed items from rendering overdue;
-- preserve checklist creation order;
-- reset due dates when checklist items are duplicated or imported into another trip;
-- add non-destructive SQLite schema version 13;
-- add set/clear, overdue, completion, ownership, copy/import reset, and migration coverage.
+- optional checklist due dates;
+- set, replace, and clear due-date actions;
+- overdue and due-today status for incomplete items;
+- completed items excluded from overdue status;
+- checklist creation order preserved;
+- due dates reset on cross-trip duplicate/import workflows;
+- non-destructive SQLite schema version 13;
+- set/clear, overdue, completion, ownership, copy/import reset, and migration regression coverage.
 
-Out of scope:
+Deferred:
 
 - notifications/reminders;
 - recurring tasks;
 - time-of-day deadlines;
 - shared checklists.
+
+### Sprint 24 — Trip preparation overview
+
+Status: In progress
+
+Planning issue: #187
+
+Current work:
+
+- #188 — show checklist completed/total progress on each owned trip card;
+- show remaining preparation-task counts;
+- highlight incomplete past-due checklist tasks;
+- exclude completed past-due tasks from overdue counts;
+- keep trips without checklist items visually quiet;
+- compute checklist status with one grouped query rather than per-trip lookups;
+- preserve existing trip ordering and controls;
+- add count, overdue, no-checklist, and ownership regression coverage.
+
+Out of scope:
+
+- notifications/reminders;
+- reordering trips;
+- shared trips;
+- calendar integration.
