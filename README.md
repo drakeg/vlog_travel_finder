@@ -35,6 +35,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - The Trips overview shows checklist progress, remaining tasks, and overdue preparation counts
   - Trips can be filtered by preparation status: all, overdue, incomplete, complete, or no checklist
   - Trips can be searched by name or notes, including alongside preparation filters
+  - Trips can be filtered by date state: upcoming, active, past, or undated
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
   - Itinerary days can open their ordered routable stops as a Google Maps driving route without a paid API
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
