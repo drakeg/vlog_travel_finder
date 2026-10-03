@@ -3075,3 +3075,117 @@ def test_trips_page_checklist_status_is_ownership_scoped(client, app):
     assert "Owner B Prep Trip" in body
     assert "Owner A Prep Trip" not in body
     assert body.count("0/1 checklist complete") == 1
+
+
+def test_trip_preparation_filters_cover_all_states_and_preserve_order(client, app):
+    client.post(
+        "/register",
+        data={"email": "prep-filters@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    for name in ["No Checklist", "Complete Prep", "Incomplete Prep", "Overdue Prep"]:
+        client.post("/trips", data={"name": name}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trips_by_name = {
+            trip.name: trip.id
+            for trip in db.query(Trip)
+            .filter(Trip.name.in_(["No Checklist", "Complete Prep", "Incomplete Prep", "Overdue Prep"]))
+            .all()
+        }
+
+    complete_id = trips_by_name["Complete Prep"]
+    incomplete_id = trips_by_name["Incomplete Prep"]
+    overdue_id = trips_by_name["Overdue Prep"]
+
+    client.post(f"/trips/{complete_id}/checklist", data={"text": "Done"})
+    with app.app_context():
+        db = get_session(app)
+        complete_item = db.query(TripChecklistItem).filter_by(trip_id=complete_id).first()
+        assert complete_item is not None
+        complete_item_id = complete_item.id
+    client.post(f"/trips/{complete_id}/checklist/{complete_item_id}/toggle")
+
+    client.post(f"/trips/{incomplete_id}/checklist", data={"text": "Still to do"})
+    client.post(
+        f"/trips/{overdue_id}/checklist",
+        data={"text": "Late task", "due_date": "2000-01-01"},
+    )
+
+    all_body = client.get("/trips").get_data(as_text=True)
+    assert all_body.index("Overdue Prep") < all_body.index("Incomplete Prep")
+    assert all_body.index("Incomplete Prep") < all_body.index("Complete Prep")
+    assert all_body.index("Complete Prep") < all_body.index("No Checklist")
+
+    overdue = client.get("/trips?prep=overdue").get_data(as_text=True)
+    assert "Overdue Prep" in overdue
+    assert "Incomplete Prep" not in overdue
+    assert "Complete Prep" not in overdue
+    assert "No Checklist" not in overdue
+
+    incomplete = client.get("/trips?prep=incomplete").get_data(as_text=True)
+    assert "Overdue Prep" in incomplete
+    assert "Incomplete Prep" in incomplete
+    assert incomplete.index("Overdue Prep") < incomplete.index("Incomplete Prep")
+    assert "Complete Prep" not in incomplete
+    assert "No Checklist" not in incomplete
+
+    complete = client.get("/trips?prep=complete").get_data(as_text=True)
+    assert "Complete Prep" in complete
+    assert "Overdue Prep" not in complete
+    assert "Incomplete Prep" not in complete
+    assert "No Checklist" not in complete
+
+    none = client.get("/trips?prep=none").get_data(as_text=True)
+    assert "No Checklist" in none
+    assert "Overdue Prep" not in none
+    assert "Incomplete Prep" not in none
+    assert "Complete Prep" not in none
+
+
+def test_trip_preparation_filter_unknown_value_falls_back_to_all(client):
+    client.post(
+        "/register",
+        data={"email": "prep-filter-invalid@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Fallback Trip"}, follow_redirects=True)
+
+    body = client.get("/trips?prep=bogus").get_data(as_text=True)
+    assert "Fallback Trip" in body
+    assert 'class="btn btn-sm btn-primary"' in body
+
+
+def test_trip_preparation_filter_empty_state_and_ownership(client, app):
+    client.post(
+        "/register",
+        data={"email": "prep-filter-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Complete"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        owner_a_trip = db.query(Trip).filter_by(name="Owner A Complete").first()
+        assert owner_a_trip is not None
+        owner_a_id = owner_a_trip.id
+    client.post(f"/trips/{owner_a_id}/checklist", data={"text": "Done A"})
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=owner_a_id).first()
+        assert item is not None
+        item_id = item.id
+    client.post(f"/trips/{owner_a_id}/checklist/{item_id}/toggle")
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "prep-filter-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Plain"}, follow_redirects=True)
+
+    complete = client.get("/trips?prep=complete").get_data(as_text=True)
+    assert "Owner A Complete" not in complete
+    assert "Owner B Plain" not in complete
+    assert "No trips match the selected preparation filter." in complete
