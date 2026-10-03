@@ -601,12 +601,23 @@ def trips() -> str:
                 filtered_trips.append(trip)
         trips = filtered_trips
 
+    trip_search = clean_str(request.args.get("q")) or ""
+    if trip_search:
+        needle = trip_search.casefold()
+        trips = [
+            trip
+            for trip in trips
+            if needle in trip.name.casefold()
+            or (trip.notes and needle in trip.notes.casefold())
+        ]
+
     return render_template(
         "public/trips.html",
         trips=trips,
         trip_counts=counts,
         checklist_stats=checklist_stats,
         prep_filter=prep_filter,
+        trip_search=trip_search,
     )
 
 
