@@ -611,6 +611,27 @@ def trips() -> str:
             or (trip.notes and needle in trip.notes.casefold())
         ]
 
+    date_filter = clean_str(request.args.get("date")) or "all"
+    valid_date_filters = {"all", "upcoming", "active", "past", "undated"}
+    if date_filter not in valid_date_filters:
+        date_filter = "all"
+
+    if date_filter != "all":
+        date_filtered_trips = []
+        for trip in trips:
+            if not trip.start_date and not trip.end_date:
+                state = "undated"
+            elif trip.end_date and trip.end_date < today:
+                state = "past"
+            elif trip.start_date and trip.start_date > today:
+                state = "upcoming"
+            else:
+                state = "active"
+
+            if state == date_filter:
+                date_filtered_trips.append(trip)
+        trips = date_filtered_trips
+
     return render_template(
         "public/trips.html",
         trips=trips,
@@ -618,6 +639,7 @@ def trips() -> str:
         checklist_stats=checklist_stats,
         prep_filter=prep_filter,
         trip_search=trip_search,
+        date_filter=date_filter,
     )
 
 
