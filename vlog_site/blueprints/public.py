@@ -586,6 +586,7 @@ def trip_detail(trip_id: int) -> str:
         checklist_items=checklist_items,
         checklist_completed=checklist_completed,
         checklist_remaining=len(checklist_items) - checklist_completed,
+        today_iso=date.today().isoformat(),
     )
 
 
@@ -595,10 +596,22 @@ def trip_checklist_add(trip_id: int):
     db = get_session(current_app)
     trip = _current_user_trip_or_404(db, trip_id)
     item_text = clean_str(request.form.get("text"))
+    try:
+        due_date = _clean_iso_date(request.form.get("due_date"))
+    except ValueError:
+        flash("Checklist due date must be a valid date", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
     if not item_text:
         flash("Checklist item is required", "error")
     else:
-        db.add(TripChecklistItem(trip_id=trip.id, text=item_text))
+        db.add(
+            TripChecklistItem(
+                trip_id=trip.id,
+                text=item_text,
+                due_date=due_date,
+            )
+        )
         db.commit()
         flash("Checklist item added", "info")
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
@@ -675,6 +688,39 @@ def trip_checklist_import(trip_id: int):
         flash("No new checklist items to import", "info")
 
     return redirect(url_for("public.trip_detail", trip_id=target_trip.id))
+
+
+@public_bp.route(
+    "/trips/<int:trip_id>/checklist/<int:item_id>/due-date",
+    methods=["POST"],
+)
+@login_required
+def trip_checklist_due_date(trip_id: int, item_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    item = (
+        db.execute(
+            select(TripChecklistItem).where(
+                TripChecklistItem.id == item_id,
+                TripChecklistItem.trip_id == trip.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if item is None:
+        abort(404)
+
+    try:
+        due_date = _clean_iso_date(request.form.get("due_date"))
+    except ValueError:
+        flash("Checklist due date must be a valid date", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    item.due_date = due_date
+    db.commit()
+    flash("Checklist due date updated", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
 @public_bp.route(
