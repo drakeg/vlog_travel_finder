@@ -3188,7 +3188,7 @@ def test_trip_preparation_filter_empty_state_and_ownership(client, app):
     complete = client.get("/trips?prep=complete").get_data(as_text=True)
     assert "Owner A Complete" not in complete
     assert "Owner B Plain" not in complete
-    assert "No trips match the selected preparation filter." in complete
+    assert "No trips match the current search or preparation filter." in complete
 
 
 def test_trip_search_matches_name_and_notes_case_insensitively(client):
