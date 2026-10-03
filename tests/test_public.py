@@ -3301,3 +3301,160 @@ def test_trip_search_is_ownership_scoped(client):
     body = client.get("/trips?q=route").get_data(as_text=True)
     assert "Public Arizona Trip" in body
     assert "Secret Alaska Trip" not in body
+
+
+def test_trip_date_filters_cover_upcoming_active_past_and_undated(client):
+    client.post(
+        "/register",
+        data={"email": "trip-date-filter@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    trips = [
+        ("Undated Trip", "", ""),
+        ("Past Trip", "2000-01-01", "2000-01-02"),
+        ("Active Trip", "2000-01-01", "2099-12-31"),
+        ("Upcoming Trip", "2099-01-01", "2099-01-02"),
+        ("Start Only Active", "2000-01-01", ""),
+        ("Start Only Upcoming", "2099-01-01", ""),
+        ("End Only Active", "", "2099-01-01"),
+        ("End Only Past", "", "2000-01-01"),
+    ]
+    for name, start_date, end_date in trips:
+        client.post(
+            "/trips",
+            data={"name": name, "start_date": start_date, "end_date": end_date},
+            follow_redirects=True,
+        )
+
+    upcoming = client.get("/trips?date=upcoming").get_data(as_text=True)
+    assert "Upcoming Trip" in upcoming
+    assert "Start Only Upcoming" in upcoming
+    assert "Active Trip" not in upcoming
+    assert "Past Trip" not in upcoming
+    assert "Undated Trip" not in upcoming
+
+    active = client.get("/trips?date=active").get_data(as_text=True)
+    assert "Active Trip" in active
+    assert "Start Only Active" in active
+    assert "End Only Active" in active
+    assert "Upcoming Trip" not in active
+    assert "Past Trip" not in active
+    assert "Undated Trip" not in active
+
+    past = client.get("/trips?date=past").get_data(as_text=True)
+    assert "Past Trip" in past
+    assert "End Only Past" in past
+    assert "Active Trip" not in past
+    assert "Upcoming Trip" not in past
+    assert "Undated Trip" not in past
+
+    undated = client.get("/trips?date=undated").get_data(as_text=True)
+    assert "Undated Trip" in undated
+    assert "Active Trip" not in undated
+    assert "Past Trip" not in undated
+    assert "Upcoming Trip" not in undated
+
+
+def test_trip_date_filter_composes_with_search_and_preparation_filter(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-date-compose@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Camp Active Incomplete",
+            "notes": "Mountain camping",
+            "start_date": "2000-01-01",
+            "end_date": "2099-12-31",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={
+            "name": "Camp Future Complete",
+            "notes": "Mountain camping",
+            "start_date": "2099-01-01",
+            "end_date": "2099-01-02",
+        },
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        active_trip = db.query(Trip).filter_by(name="Camp Active Incomplete").first()
+        future_trip = db.query(Trip).filter_by(name="Camp Future Complete").first()
+        assert active_trip is not None and future_trip is not None
+        active_id, future_id = active_trip.id, future_trip.id
+
+    client.post(f"/trips/{active_id}/checklist", data={"text": "Pack tent"})
+    client.post(f"/trips/{future_id}/checklist", data={"text": "Reserve site"})
+    with app.app_context():
+        db = get_session(app)
+        future_item = db.query(TripChecklistItem).filter_by(trip_id=future_id).first()
+        assert future_item is not None
+        future_item_id = future_item.id
+    client.post(f"/trips/{future_id}/checklist/{future_item_id}/toggle")
+
+    body = client.get(
+        "/trips?q=camp&prep=incomplete&date=active"
+    ).get_data(as_text=True)
+    assert "Camp Active Incomplete" in body
+    assert "Camp Future Complete" not in body
+    assert 'value="camp"' in body
+    assert 'value="incomplete" selected' in body
+    assert 'value="active" selected' in body
+
+
+def test_trip_date_filter_unknown_value_falls_back_to_all_and_preserves_order(client):
+    client.post(
+        "/register",
+        data={"email": "trip-date-fallback@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Older Trip", "start_date": "2000-01-01", "end_date": "2000-01-02"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Newer Trip", "start_date": "2099-01-01", "end_date": "2099-01-02"},
+        follow_redirects=True,
+    )
+
+    body = client.get("/trips?date=bogus").get_data(as_text=True)
+    assert body.index("Newer Trip") < body.index("Older Trip")
+    assert 'value="all" selected' in body
+
+
+def test_trip_date_filter_empty_state_and_ownership(client):
+    client.post(
+        "/register",
+        data={"email": "trip-date-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Owner A Future", "start_date": "2099-01-01", "end_date": "2099-01-02"},
+        follow_redirects=True,
+    )
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={"email": "trip-date-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Owner B Undated"},
+        follow_redirects=True,
+    )
+
+    upcoming = client.get("/trips?date=upcoming").get_data(as_text=True)
+    assert "Owner A Future" not in upcoming
+    assert "Owner B Undated" not in upcoming
+    assert "No trips match the current search or filters." in upcoming
