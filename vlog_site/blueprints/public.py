@@ -578,11 +578,35 @@ def trips() -> str:
             .group_by(TripChecklistItem.trip_id)
         ).all()
     }
+    prep_filter = clean_str(request.args.get("prep")) or "all"
+    valid_prep_filters = {"all", "overdue", "incomplete", "complete", "none"}
+    if prep_filter not in valid_prep_filters:
+        prep_filter = "all"
+
+    if prep_filter != "all":
+        filtered_trips = []
+        for trip in trips:
+            stats = checklist_stats.get(trip.id)
+            if prep_filter == "none":
+                matches = stats is None
+            elif stats is None:
+                matches = False
+            elif prep_filter == "overdue":
+                matches = stats["overdue"] > 0
+            elif prep_filter == "incomplete":
+                matches = stats["completed"] < stats["total"]
+            else:
+                matches = stats["total"] > 0 and stats["completed"] == stats["total"]
+            if matches:
+                filtered_trips.append(trip)
+        trips = filtered_trips
+
     return render_template(
         "public/trips.html",
         trips=trips,
         trip_counts=counts,
         checklist_stats=checklist_stats,
+        prep_filter=prep_filter,
     )
 
 

@@ -639,24 +639,47 @@ Deferred:
 
 ### Sprint 24 — Trip preparation overview
 
-Status: In progress
+Status: Complete
 
 Planning issue: #187
 
-Current work:
+Shipped:
 
-- #188 — show checklist completed/total progress on each owned trip card;
-- show remaining preparation-task counts;
-- highlight incomplete past-due checklist tasks;
-- exclude completed past-due tasks from overdue counts;
-- keep trips without checklist items visually quiet;
-- compute checklist status with one grouped query rather than per-trip lookups;
-- preserve existing trip ordering and controls;
-- add count, overdue, no-checklist, and ownership regression coverage.
+- checklist completed/total progress on the Trips overview;
+- remaining preparation-task counts;
+- overdue incomplete-task counts and highlighting;
+- completed past-due tasks excluded from overdue counts;
+- quiet presentation for trips without checklist items;
+- grouped checklist aggregation without N+1 queries;
+- existing trip ordering and controls preserved;
+- progress, overdue, no-checklist, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - notifications/reminders;
 - reordering trips;
 - shared trips;
 - calendar integration.
+
+### Sprint 25 — Trip preparation filters
+
+Status: In progress
+
+Planning issue: #190
+
+Current work:
+
+- #191 — filter trips by overdue, incomplete, complete, or no-checklist preparation state;
+- keep All as the default and fall back to it for unknown values;
+- preserve existing trip ordering inside filtered results;
+- reuse already aggregated checklist status without N+1 queries;
+- keep trip creation and existing controls unchanged;
+- show a useful empty state when no trips match;
+- add all-state, ordering, empty-state, fallback, and ownership regression coverage.
+
+Out of scope:
+
+- saved filter preferences;
+- trip search;
+- date-range filtering;
+- reordering trips.
