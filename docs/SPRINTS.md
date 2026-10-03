@@ -686,24 +686,49 @@ Deferred:
 
 ### Sprint 26 — Trip search
 
-Status: In progress
+Status: Complete
 
 Planning issue: #193
 
-Current work:
+Shipped:
 
-- #194 — search owned trips by name or notes;
-- match case-insensitively and treat blank search as no search;
-- compose search with existing preparation filters;
-- preserve existing trip ordering inside search results;
-- keep the active search term visible and retained by filter links;
-- show a useful empty state when no trips match;
-- keep ownership scoping unchanged;
-- add name/notes, case, filter-composition, ordering, blank, empty-state, and ownership regression coverage.
+- search by trip name and notes;
+- case-insensitive matching;
+- blank/whitespace search treated as no search;
+- search composed with preparation filters;
+- existing trip order preserved;
+- active query retained in search controls and filter links;
+- clear empty-state messaging;
+- ownership scoping preserved;
+- name/notes, case, filter-composition, ordering, blank, empty-state, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - full-text indexing;
 - fuzzy matching;
 - saved searches;
 - date-range filtering.
+
+### Sprint 27 — Trip date filters
+
+Status: In progress
+
+Planning issue: #196
+
+Current work:
+
+- #197 — filter trips by upcoming, active, past, or undated date state;
+- support one-sided start and end dates consistently;
+- compose date filtering with search and preparation filters;
+- preserve existing trip ordering;
+- retain active search/preparation/date selections in the UI;
+- fall back to All dates for unknown date-filter values;
+- show a clear empty state when nothing matches;
+- add state, one-sided-date, composition, ordering, fallback, empty-state, and ownership regression coverage.
+
+Out of scope:
+
+- arbitrary custom date ranges;
+- saved filter preferences;
+- calendar sync;
+- trip reordering.
