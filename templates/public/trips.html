@@ -30,6 +30,23 @@
               <div class="text-muted mb-2">
                 {{ trip_counts.get(trip.id, 0) }} place{% if trip_counts.get(trip.id, 0) != 1 %}s{% endif %}
               </div>
+              {% set prep = checklist_stats.get(trip.id) %}
+              {% if prep %}
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                  <span class="badge text-bg-light border">
+                    <i class="fa-solid fa-list-check me-1"></i>{{ prep.completed }}/{{ prep.total }} checklist complete
+                  </span>
+                  {% set remaining = prep.total - prep.completed %}
+                  {% if remaining %}
+                    <span class="badge text-bg-secondary">{{ remaining }} remaining</span>
+                  {% endif %}
+                  {% if prep.overdue %}
+                    <span class="badge text-bg-danger">
+                      <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ prep.overdue }} overdue
+                    </span>
+                  {% endif %}
+                </div>
+              {% endif %}
               {% if trip.start_date or trip.end_date %}
                 <div class="small text-body-secondary mb-2">
                   <i class="fa-regular fa-calendar me-1"></i>
