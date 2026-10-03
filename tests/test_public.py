@@ -3189,3 +3189,115 @@ def test_trip_preparation_filter_empty_state_and_ownership(client, app):
     assert "Owner A Complete" not in complete
     assert "Owner B Plain" not in complete
     assert "No trips match the selected preparation filter." in complete
+
+
+def test_trip_search_matches_name_and_notes_case_insensitively(client):
+    client.post(
+        "/register",
+        data={"email": "trip-search@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Finger Lakes Weekend", "notes": "Wine tasting and waterfalls"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Florida Winter", "notes": "Beach camping"},
+        follow_redirects=True,
+    )
+
+    by_name = client.get("/trips?q=finger").get_data(as_text=True)
+    assert "Finger Lakes Weekend" in by_name
+    assert "Florida Winter" not in by_name
+
+    by_notes = client.get("/trips?q=WATERFALLS").get_data(as_text=True)
+    assert "Finger Lakes Weekend" in by_notes
+    assert "Florida Winter" not in by_notes
+
+
+def test_trip_search_composes_with_preparation_filter_and_preserves_order(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-search-filter@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    for name in ["Camp Old", "Camp New", "Hotel New"]:
+        client.post("/trips", data={"name": name}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trips_by_name = {
+            trip.name: trip.id
+            for trip in db.query(Trip)
+            .filter(Trip.name.in_(["Camp Old", "Camp New", "Hotel New"]))
+            .all()
+        }
+
+    for name in ["Camp Old", "Camp New"]:
+        trip_id = trips_by_name[name]
+        client.post(f"/trips/{trip_id}/checklist", data={"text": "Prep task"})
+
+    camp_new = trips_by_name["Camp New"]
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=camp_new).first()
+        assert item is not None
+        item_id = item.id
+    client.post(f"/trips/{camp_new}/checklist/{item_id}/toggle")
+
+    incomplete = client.get("/trips?q=camp&prep=incomplete").get_data(as_text=True)
+    assert "Camp Old" in incomplete
+    assert "Camp New" not in incomplete
+    assert "Hotel New" not in incomplete
+
+    all_camp = client.get("/trips?q=camp&prep=all").get_data(as_text=True)
+    assert all_camp.index("Camp New") < all_camp.index("Camp Old")
+    assert "Hotel New" not in all_camp
+    assert "q=camp" in all_camp
+
+
+def test_trip_search_blank_behaves_like_no_search_and_empty_state_is_clear(client):
+    client.post(
+        "/register",
+        data={"email": "trip-search-empty@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Visible Trip"}, follow_redirects=True)
+
+    blank = client.get("/trips?q=%20%20%20").get_data(as_text=True)
+    assert "Visible Trip" in blank
+
+    empty = client.get("/trips?q=does-not-exist").get_data(as_text=True)
+    assert "Visible Trip" not in empty
+    assert "No trips match the current search or preparation filter." in empty
+
+
+def test_trip_search_is_ownership_scoped(client):
+    client.post(
+        "/register",
+        data={"email": "trip-search-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Secret Alaska Trip", "notes": "Northern route"},
+        follow_redirects=True,
+    )
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={"email": "trip-search-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post(
+        "/trips",
+        data={"name": "Public Arizona Trip", "notes": "Desert route"},
+        follow_redirects=True,
+    )
+
+    body = client.get("/trips?q=route").get_data(as_text=True)
+    assert "Public Arizona Trip" in body
+    assert "Secret Alaska Trip" not in body
