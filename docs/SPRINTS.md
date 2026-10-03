@@ -591,24 +591,48 @@ Deferred:
 
 ### Sprint 22 — Reuse checklists across trips
 
-Status: In progress
+Status: Complete
 
 Planning issue: #179
 
-Current work:
+Shipped:
 
-- #180 — import checklist items from another owned trip;
-- append new tasks in source checklist order;
-- reset imported items to incomplete;
-- skip existing target task text case-insensitively;
-- leave source and existing target items unchanged;
-- report clearly when there is nothing new to import;
-- enforce ownership of both source and target trips;
-- add order, duplicate, reset, independence, ownership, and empty-source regression coverage.
+- checklist import from another owned trip;
+- source-order append behavior;
+- imported items reset to incomplete;
+- case-insensitive duplicate task skipping;
+- source and existing target state preserved;
+- clear empty/no-new-items result messaging;
+- independent ownership checks for source and target trips;
+- order, duplicate, reset, independence, ownership, and empty-source regression coverage.
 
-Out of scope:
+Deferred:
 
 - global checklist templates;
 - cross-user checklist sharing;
 - due dates/reminders;
 - partial source-item selection.
+
+### Sprint 23 — Checklist due dates
+
+Status: In progress
+
+Planning issue: #184
+
+Current work:
+
+- #185 — add optional due dates to checklist items;
+- set, replace, and clear due dates;
+- show overdue and due-today status for incomplete items;
+- keep completed items from rendering overdue;
+- preserve checklist creation order;
+- reset due dates when checklist items are duplicated or imported into another trip;
+- add non-destructive SQLite schema version 13;
+- add set/clear, overdue, completion, ownership, copy/import reset, and migration coverage.
+
+Out of scope:
+
+- notifications/reminders;
+- recurring tasks;
+- time-of-day deadlines;
+- shared checklists.

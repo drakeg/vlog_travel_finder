@@ -91,6 +91,7 @@ class TripChecklistItem(Base):
     trip_id: Mapped[int] = mapped_column(ForeignKey("trip.id"), nullable=False)
     text: Mapped[str] = mapped_column(String, nullable=False)
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    due_date: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,

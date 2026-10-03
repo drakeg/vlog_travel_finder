@@ -57,7 +57,7 @@ def test_upgrade_version_11_adds_checklist_without_losing_trip(tmp_path):
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 12
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 13
         tables = {
             row[0]
             for row in conn.execute(
@@ -87,3 +87,72 @@ def test_upgrade_version_11_adds_checklist_without_losing_trip(tmp_path):
         assert conn.execute(
             text("SELECT COUNT(*) FROM trip_checklist_item WHERE trip_id = 1")
         ).scalar_one() == 1
+
+
+def test_upgrade_version_12_adds_checklist_due_date_without_losing_items(tmp_path):
+    db_path = tmp_path / "migration-v12.sqlite"
+    engine = create_engine(f"sqlite:///{db_path}", future=True)
+
+    with engine.begin() as conn:
+        conn.connection.executescript(
+            """
+            CREATE TABLE user (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE trip (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                notes TEXT NULL,
+                start_date TEXT NULL,
+                end_date TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE trip_checklist_item (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                trip_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                completed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE site_setting (
+                key TEXT PRIMARY KEY,
+                value TEXT NULL
+            );
+
+            INSERT INTO user (email, password_hash, role)
+            VALUES ('due-migration@example.com', 'hash', 'member');
+
+            INSERT INTO trip (user_id, name)
+            VALUES (1, 'Existing Due Trip');
+
+            INSERT INTO trip_checklist_item (trip_id, text, completed)
+            VALUES (1, 'Existing checklist item', 1);
+
+            PRAGMA user_version = 12;
+            """
+        )
+
+    upgrade_sqlite_schema(engine)
+
+    with engine.begin() as conn:
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 13
+        columns = {
+            row[1]
+            for row in conn.execute(text("PRAGMA table_info(trip_checklist_item)"))
+        }
+        assert "due_date" in columns
+        row = conn.execute(
+            text(
+                "SELECT text, completed, due_date "
+                "FROM trip_checklist_item WHERE id = 1"
+            )
+        ).one()
+        assert tuple(row) == ("Existing checklist item", 1, None)

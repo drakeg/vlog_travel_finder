@@ -2838,3 +2838,145 @@ def test_checklist_import_rejects_cross_user_source(client, app):
         f"/trips/{target_id}/checklist/import",
         data={"source_trip_id": str(source_id)},
     ).status_code == 404
+
+
+def test_checklist_due_date_set_clear_and_overdue_rendering(client, app):
+    client.post(
+        "/register",
+        data={"email": "due-date@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Due Date Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Due Date Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "Past due task", "due_date": "2000-01-01"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=trip_id).first()
+        assert item is not None
+        item_id = item.id
+        assert item.due_date == "2000-01-01"
+
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "Overdue" in body
+    assert "Due 2000-01-01" in body
+
+    client.post(f"/trips/{trip_id}/checklist/{item_id}/toggle")
+    body = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert "Past due task" in body
+    assert "Overdue" not in body
+
+    client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/due-date",
+        data={"due_date": "2099-12-31"},
+    )
+    with app.app_context():
+        db = get_session(app)
+        item = db.get(TripChecklistItem, item_id)
+        assert item is not None
+        assert item.due_date == "2099-12-31"
+
+    client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/due-date",
+        data={"due_date": ""},
+    )
+    with app.app_context():
+        db = get_session(app)
+        item = db.get(TripChecklistItem, item_id)
+        assert item is not None
+        assert item.due_date is None
+
+
+def test_checklist_due_date_rejects_invalid_and_cross_user_updates(client, app):
+    client.post(
+        "/register",
+        data={"email": "due-owner@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Private Due Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Private Due Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    invalid_add = client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "Bad date", "due_date": "not-a-date"},
+        follow_redirects=True,
+    )
+    assert "Checklist due date must be a valid date" in invalid_add.get_data(as_text=True)
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Owner due task"})
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=trip_id).first()
+        assert item is not None
+        item_id = item.id
+
+    invalid_update = client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/due-date",
+        data={"due_date": "2026-99-99"},
+        follow_redirects=True,
+    )
+    assert "Checklist due date must be a valid date" in invalid_update.get_data(as_text=True)
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "due-intruder@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    assert client.post(
+        f"/trips/{trip_id}/checklist/{item_id}/due-date",
+        data={"due_date": "2099-01-01"},
+    ).status_code == 404
+
+
+def test_checklist_due_dates_reset_on_duplicate_and_import(client, app):
+    client.post(
+        "/register",
+        data={"email": "due-reset@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Due Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Due Import Target"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Due Source").first()
+        target = db.query(Trip).filter_by(name="Due Import Target").first()
+        assert source is not None and target is not None
+        source_id, target_id = source.id, target.id
+
+    client.post(
+        f"/trips/{source_id}/checklist",
+        data={"text": "Date-specific task", "due_date": "2099-05-05"},
+    )
+    client.post(f"/trips/{source_id}/duplicate", follow_redirects=False)
+    client.post(
+        f"/trips/{target_id}/checklist/import",
+        data={"source_trip_id": str(source_id)},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        source_item = db.query(TripChecklistItem).filter_by(trip_id=source_id).first()
+        copy = db.query(Trip).filter_by(name="Due Source (Copy)").first()
+        assert source_item is not None and copy is not None
+        duplicate_item = db.query(TripChecklistItem).filter_by(trip_id=copy.id).first()
+        imported_item = db.query(TripChecklistItem).filter_by(trip_id=target_id).first()
+        assert duplicate_item is not None and imported_item is not None
+        assert source_item.due_date == "2099-05-05"
+        assert duplicate_item.due_date is None
+        assert imported_item.due_date is None

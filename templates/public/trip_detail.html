@@ -98,6 +98,10 @@
             required
           />
         </div>
+        <div class="col-12 col-md-3">
+          <label class="visually-hidden" for="checklist-due-date">Optional due date</label>
+          <input class="form-control" id="checklist-due-date" type="date" name="due_date" />
+        </div>
         <div class="col-12 col-md-auto d-grid">
           <button class="btn btn-outline-primary" type="submit">
             <i class="fa-solid fa-plus me-1"></i>Add item
@@ -128,24 +132,50 @@
       {% if checklist_items %}
         <div class="list-group">
           {% for item in checklist_items %}
-            <div class="list-group-item d-flex align-items-center justify-content-between gap-3">
-              <form method="post" action="{{ url_for('public.trip_checklist_toggle', trip_id=trip.id, item_id=item.id) }}" class="d-flex align-items-center gap-2 flex-grow-1 mb-0">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
-                <button
-                  class="btn btn-sm {% if item.completed %}btn-success{% else %}btn-outline-secondary{% endif %}"
-                  type="submit"
-                  aria-label="{% if item.completed %}Mark incomplete{% else %}Mark complete{% endif %}: {{ item.text }}"
-                >
-                  <i class="fa-solid {% if item.completed %}fa-check{% else %}fa-circle{% endif %}"></i>
-                </button>
-                <span class="{% if item.completed %}text-decoration-line-through text-body-secondary{% endif %}">{{ item.text }}</span>
-              </form>
-              <form method="post" action="{{ url_for('public.trip_checklist_delete', trip_id=trip.id, item_id=item.id) }}" class="mb-0">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
-                <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete checklist item">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </form>
+            <div class="list-group-item">
+              <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                <form method="post" action="{{ url_for('public.trip_checklist_toggle', trip_id=trip.id, item_id=item.id) }}" class="d-flex align-items-center gap-2 flex-grow-1 mb-0">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                  <button
+                    class="btn btn-sm {% if item.completed %}btn-success{% elif item.due_date and item.due_date < today_iso %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                    type="submit"
+                    aria-label="{% if item.completed %}Mark incomplete{% else %}Mark complete{% endif %}: {{ item.text }}"
+                  >
+                    <i class="fa-solid {% if item.completed %}fa-check{% elif item.due_date and item.due_date < today_iso %}fa-triangle-exclamation{% else %}fa-circle{% endif %}"></i>
+                  </button>
+                  <div>
+                    <div class="{% if item.completed %}text-decoration-line-through text-body-secondary{% endif %}">{{ item.text }}</div>
+                    {% if item.due_date %}
+                      <div class="small {% if not item.completed and item.due_date < today_iso %}text-danger fw-semibold{% elif not item.completed and item.due_date == today_iso %}text-warning-emphasis fw-semibold{% else %}text-body-secondary{% endif %}">
+                        {% if not item.completed and item.due_date < today_iso %}Overdue · {% elif not item.completed and item.due_date == today_iso %}Due today · {% endif %}
+                        Due {{ item.due_date }}
+                      </div>
+                    {% endif %}
+                  </div>
+                </form>
+
+                <div class="d-flex gap-2 flex-wrap">
+                  <form method="post" action="{{ url_for('public.trip_checklist_due_date', trip_id=trip.id, item_id=item.id) }}" class="d-flex gap-2 mb-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                    <label class="visually-hidden" for="checklist-due-{{ item.id }}">Due date for {{ item.text }}</label>
+                    <input
+                      class="form-control form-control-sm"
+                      id="checklist-due-{{ item.id }}"
+                      type="date"
+                      name="due_date"
+                      value="{{ item.due_date or '' }}"
+                      title="Leave blank and save to clear the due date"
+                    />
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Save due date</button>
+                  </form>
+                  <form method="post" action="{{ url_for('public.trip_checklist_delete', trip_id=trip.id, item_id=item.id) }}" class="mb-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                    <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete checklist item">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           {% endfor %}
         </div>

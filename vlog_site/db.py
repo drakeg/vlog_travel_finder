@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 12
+        latest_version = 13
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -489,6 +489,24 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 )
 
                 version = 12
+                _set_user_version(conn, version)
+                continue
+
+            if version == 12:
+                checklist_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip_checklist_item)"))
+                    if r[1] is not None
+                }
+                if "due_date" not in checklist_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE trip_checklist_item "
+                            "ADD COLUMN due_date TEXT NULL"
+                        )
+                    )
+
+                version = 13
                 _set_user_version(conn, version)
                 continue
 
