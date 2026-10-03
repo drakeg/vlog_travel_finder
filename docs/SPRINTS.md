@@ -663,23 +663,47 @@ Deferred:
 
 ### Sprint 25 — Trip preparation filters
 
-Status: In progress
+Status: Complete
 
 Planning issue: #190
 
-Current work:
+Shipped:
 
-- #191 — filter trips by overdue, incomplete, complete, or no-checklist preparation state;
-- keep All as the default and fall back to it for unknown values;
-- preserve existing trip ordering inside filtered results;
-- reuse already aggregated checklist status without N+1 queries;
-- keep trip creation and existing controls unchanged;
-- show a useful empty state when no trips match;
-- add all-state, ordering, empty-state, fallback, and ownership regression coverage.
+- All, Overdue, Incomplete, Complete, and No checklist filters;
+- All as the safe default with unknown values falling back to All;
+- existing trip ordering preserved inside filtered results;
+- existing grouped checklist status reused without N+1 queries;
+- trip creation and existing controls preserved;
+- clear empty-state messaging for filtered results;
+- all-state, ordering, fallback, empty-state, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - saved filter preferences;
 - trip search;
 - date-range filtering;
 - reordering trips.
+
+### Sprint 26 — Trip search
+
+Status: In progress
+
+Planning issue: #193
+
+Current work:
+
+- #194 — search owned trips by name or notes;
+- match case-insensitively and treat blank search as no search;
+- compose search with existing preparation filters;
+- preserve existing trip ordering inside search results;
+- keep the active search term visible and retained by filter links;
+- show a useful empty state when no trips match;
+- keep ownership scoping unchanged;
+- add name/notes, case, filter-composition, ordering, blank, empty-state, and ownership regression coverage.
+
+Out of scope:
+
+- full-text indexing;
+- fuzzy matching;
+- saved searches;
+- date-range filtering.

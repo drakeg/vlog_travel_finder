@@ -20,6 +20,39 @@
     </form>
   </div>
 
+  <form method="get" action="{{ url_for('public.trips') }}" class="row g-2 mb-3" role="search">
+    <div class="col-12 col-md">
+      <label class="visually-hidden" for="trip-search">Search trips</label>
+      <input
+        class="form-control"
+        id="trip-search"
+        type="search"
+        name="q"
+        value="{{ trip_search }}"
+        placeholder="Search trip names or notes"
+      />
+    </div>
+    <div class="col-6 col-md-auto">
+      <select class="form-select" name="prep" aria-label="Preparation status">
+        {% set filters = [
+          ("all", "All"),
+          ("overdue", "Overdue"),
+          ("incomplete", "Incomplete"),
+          ("complete", "Complete"),
+          ("none", "No checklist")
+        ] %}
+        {% for value, label in filters %}
+          <option value="{{ value }}" {% if prep_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-auto d-grid">
+      <button class="btn btn-outline-primary" type="submit">
+        <i class="fa-solid fa-magnifying-glass me-1"></i>Search
+      </button>
+    </div>
+  </form>
+
   <div class="d-flex gap-2 flex-wrap mb-4" aria-label="Trip preparation filters">
     {% set filters = [
       ("all", "All"),
@@ -31,7 +64,7 @@
     {% for value, label in filters %}
       <a
         class="btn btn-sm {% if prep_filter == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-        href="{{ url_for('public.trips', prep=value) }}"
+        href="{{ url_for('public.trips', prep=value, q=trip_search or None) }}"
       >{{ label }}</a>
     {% endfor %}
   </div>
@@ -93,8 +126,8 @@
   {% else %}
     <div class="card shadow-sm">
       <div class="card-body">
-        {% if prep_filter != "all" %}
-          <p class="mb-0">No trips match the selected preparation filter.</p>
+        {% if trip_search or prep_filter != "all" %}
+          <p class="mb-0">No trips match the current search or preparation filter.</p>
         {% else %}
           <p class="mb-0">No trips yet. Create one above, then add places from any place detail page.</p>
         {% endif %}
