@@ -32,6 +32,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Duplicating a trip copies its checklist items and resets them to incomplete
   - Checklist items can be imported from another owned trip, skipping duplicate task text
   - Checklist items support optional due dates with overdue and due-today status
+  - The Trips overview shows checklist progress, remaining tasks, and overdue preparation counts
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
   - Itinerary days can open their ordered routable stops as a Google Maps driving route without a paid API
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
