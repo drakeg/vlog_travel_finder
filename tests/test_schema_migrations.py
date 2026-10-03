@@ -57,7 +57,7 @@ def test_upgrade_version_11_adds_checklist_without_losing_trip(tmp_path):
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 12
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 13
         tables = {
             row[0]
             for row in conn.execute(
