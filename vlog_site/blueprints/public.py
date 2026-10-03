@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import send_from_directory
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import case, func, or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
@@ -543,7 +543,47 @@ def trips() -> str:
             .group_by(TripPlace.trip_id)
         ).all()
     )
-    return render_template("public/trips.html", trips=trips, trip_counts=counts)
+
+    today = date.today().isoformat()
+    checklist_stats = {
+        trip_id: {
+            "total": int(total or 0),
+            "completed": int(completed or 0),
+            "overdue": int(overdue or 0),
+        }
+        for trip_id, total, completed, overdue in db.execute(
+            select(
+                TripChecklistItem.trip_id,
+                func.count(TripChecklistItem.id),
+                func.sum(
+                    case(
+                        (TripChecklistItem.completed.is_(True), 1),
+                        else_=0,
+                    )
+                ),
+                func.sum(
+                    case(
+                        (
+                            TripChecklistItem.completed.is_(False)
+                            & TripChecklistItem.due_date.is_not(None)
+                            & (TripChecklistItem.due_date < today),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+            )
+            .join(Trip, Trip.id == TripChecklistItem.trip_id)
+            .where(Trip.user_id == user_id)
+            .group_by(TripChecklistItem.trip_id)
+        ).all()
+    }
+    return render_template(
+        "public/trips.html",
+        trips=trips,
+        trip_counts=counts,
+        checklist_stats=checklist_stats,
+    )
 
 
 @public_bp.route("/trips/<int:trip_id>")
