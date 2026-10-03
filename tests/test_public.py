@@ -2980,3 +2980,98 @@ def test_checklist_due_dates_reset_on_duplicate_and_import(client, app):
         assert source_item.due_date == "2099-05-05"
         assert duplicate_item.due_date is None
         assert imported_item.due_date is None
+
+
+def test_trips_page_shows_checklist_progress_and_overdue_counts(client, app):
+    client.post(
+        "/register",
+        data={"email": "prep-overview@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Prep Overview Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Prep Overview Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "Completed old task", "due_date": "2000-01-01"},
+    )
+    client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "Overdue task", "due_date": "2000-01-02"},
+    )
+    client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "Future task", "due_date": "2099-01-01"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        completed_item = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id, text="Completed old task")
+            .first()
+        )
+        assert completed_item is not None
+        completed_id = completed_item.id
+
+    client.post(f"/trips/{trip_id}/checklist/{completed_id}/toggle")
+
+    body = client.get("/trips").get_data(as_text=True)
+    assert "Prep Overview Trip" in body
+    assert "1/3 checklist complete" in body
+    assert "2 remaining" in body
+    assert "1 overdue" in body
+
+
+def test_trips_page_keeps_no_checklist_trip_visually_quiet(client):
+    client.post(
+        "/register",
+        data={"email": "prep-empty@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "No Checklist Trip"}, follow_redirects=True)
+
+    body = client.get("/trips").get_data(as_text=True)
+    assert "No Checklist Trip" in body
+    assert "0/0 checklist complete" not in body
+    assert "0 remaining" not in body
+    assert "0 overdue" not in body
+
+
+def test_trips_page_checklist_status_is_ownership_scoped(client, app):
+    client.post(
+        "/register",
+        data={"email": "prep-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Prep Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip_a = db.query(Trip).filter_by(name="Owner A Prep Trip").first()
+        assert trip_a is not None
+        trip_a_id = trip_a.id
+    client.post(f"/trips/{trip_a_id}/checklist", data={"text": "A task"})
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "prep-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Prep Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip_b = db.query(Trip).filter_by(name="Owner B Prep Trip").first()
+        assert trip_b is not None
+        trip_b_id = trip_b.id
+    client.post(f"/trips/{trip_b_id}/checklist", data={"text": "B task"})
+
+    body = client.get("/trips").get_data(as_text=True)
+    assert "Owner B Prep Trip" in body
+    assert "Owner A Prep Trip" not in body
+    assert body.count("0/1 checklist complete") == 1
