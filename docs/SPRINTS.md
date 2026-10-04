@@ -711,24 +711,48 @@ Deferred:
 
 ### Sprint 27 — Trip date filters
 
-Status: In progress
+Status: Complete
 
 Planning issue: #196
 
-Current work:
+Shipped:
 
-- #197 — filter trips by upcoming, active, past, or undated date state;
-- support one-sided start and end dates consistently;
-- compose date filtering with search and preparation filters;
-- preserve existing trip ordering;
-- retain active search/preparation/date selections in the UI;
-- fall back to All dates for unknown date-filter values;
-- show a clear empty state when nothing matches;
-- add state, one-sided-date, composition, ordering, fallback, empty-state, and ownership regression coverage.
+- All dates, Upcoming, Active, Past, and Undated filters;
+- consistent handling for start-only and end-only trip dates;
+- composition with trip search and preparation filters;
+- existing trip ordering preserved;
+- active search/preparation/date selections retained in the UI;
+- unknown date-filter values fall back to All dates;
+- clear empty-state messaging;
+- state, one-sided-date, composition, ordering, fallback, empty-state, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - arbitrary custom date ranges;
 - saved filter preferences;
 - calendar sync;
 - trip reordering.
+
+### Sprint 28 — Trip sorting
+
+Status: In progress
+
+Planning issue: #199
+
+Current work:
+
+- #200 — sort filtered trips by newest, oldest, start date, name, or preparation urgency;
+- keep Newest as the default;
+- retain active search/preparation/date filters while sorting;
+- place undated trips last when sorting by start date;
+- prioritize overdue, incomplete, complete, then no-checklist trips for preparation urgency;
+- preserve deterministic tie-breaking;
+- fall back to Newest for unknown sort values;
+- add all-sort, tie-breaking, composition, fallback, and ownership regression coverage.
+
+Out of scope:
+
+- drag-and-drop trip ordering;
+- persisted per-user sort preference;
+- custom multi-column sorting;
+- database-level pagination.
