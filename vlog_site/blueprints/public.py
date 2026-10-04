@@ -632,6 +632,35 @@ def trips() -> str:
                 date_filtered_trips.append(trip)
         trips = date_filtered_trips
 
+    trip_sort = clean_str(request.args.get("sort")) or "newest"
+    valid_trip_sorts = {"newest", "oldest", "start", "name_asc", "name_desc", "prep"}
+    if trip_sort not in valid_trip_sorts:
+        trip_sort = "newest"
+
+    if trip_sort == "oldest":
+        trips = list(reversed(trips))
+    elif trip_sort == "start":
+        trips = sorted(
+            trips,
+            key=lambda trip: (trip.start_date is None, trip.start_date or ""),
+        )
+    elif trip_sort == "name_asc":
+        trips = sorted(trips, key=lambda trip: trip.name.casefold())
+    elif trip_sort == "name_desc":
+        trips = sorted(trips, key=lambda trip: trip.name.casefold(), reverse=True)
+    elif trip_sort == "prep":
+        def prep_rank(trip):
+            stats = checklist_stats.get(trip.id)
+            if stats is None:
+                return 3
+            if stats["overdue"] > 0:
+                return 0
+            if stats["completed"] < stats["total"]:
+                return 1
+            return 2
+
+        trips = sorted(trips, key=prep_rank)
+
     return render_template(
         "public/trips.html",
         trips=trips,
@@ -640,6 +669,7 @@ def trips() -> str:
         prep_filter=prep_filter,
         trip_search=trip_search,
         date_filter=date_filter,
+        trip_sort=trip_sort,
     )
 
 
