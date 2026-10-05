@@ -324,13 +324,6 @@ def saved_places() -> str:
         .all()
     )
 
-    visibility = clean_str(request.args.get("visibility")) or "active"
-    if visibility not in {"active", "archived", "all"}:
-        visibility = "active"
-    if visibility == "active":
-        trips = [trip for trip in trips if not trip.archived]
-    elif visibility == "archived":
-        trips = [trip for trip in trips if trip.archived]
     return render_template("public/saved.html", places=places, trips=trips)
 
 
@@ -543,6 +536,15 @@ def trips() -> str:
         .scalars()
         .all()
     )
+
+    visibility = clean_str(request.args.get("visibility")) or "active"
+    if visibility not in {"active", "archived", "all"}:
+        visibility = "active"
+    if visibility == "active":
+        trips = [trip for trip in trips if not trip.archived]
+    elif visibility == "archived":
+        trips = [trip for trip in trips if trip.archived]
+
     counts = dict(
         db.execute(
             select(TripPlace.trip_id, text("COUNT(1)"))
