@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 13
+        latest_version = 14
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -507,6 +507,24 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                     )
 
                 version = 13
+                _set_user_version(conn, version)
+                continue
+
+            if version == 13:
+                trip_cols = {
+                    r[1]
+                    for r in conn.execute(text("PRAGMA table_info(trip)"))
+                    if r[1] is not None
+                }
+                if "archived" not in trip_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE trip "
+                            "ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+                        )
+                    )
+
+                version = 14
                 _set_user_version(conn, version)
                 continue
 
