@@ -1,7 +1,7 @@
 from vlog_site.blueprints.public import _google_maps_route_url
 from vlog_site.db import get_session
 from vlog_site.models import AccessRule
-from vlog_site.models import PageView, Place, SavedPlace, Trip, TripChecklistItem, TripPlace
+from vlog_site.models import PageView, Place, SavedPlace, Trip, TripChecklistItem, TripPlace, User
 from vlog_site.services.settings_service import set_setting
 
 def test_home_ok(client):
@@ -3608,3 +3608,130 @@ def test_trip_sorting_is_ownership_scoped(client):
     body = client.get("/trips?sort=name_asc").get_data(as_text=True)
     assert "Owner B Zulu" in body
     assert "Owner A Alpha" not in body
+
+
+def test_trips_pagination_uses_24_per_page_and_clamps_pages(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-pages@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-pages@example.com").first()
+        assert user is not None
+        db.add_all(
+            [Trip(user_id=user.id, name=f"Paged Trip {i:02d}") for i in range(1, 27)]
+        )
+        db.commit()
+
+    page1 = client.get("/trips?page=1").get_data(as_text=True)
+    assert "Page 1 of 2" in page1
+    assert "26 trips" in page1
+    assert "Paged Trip 26" in page1
+    assert "Paged Trip 03" in page1
+    assert "Paged Trip 02" not in page1
+    assert "Paged Trip 01" not in page1
+
+    page2 = client.get("/trips?page=2").get_data(as_text=True)
+    assert "Page 2 of 2" in page2
+    assert "Paged Trip 02" in page2
+    assert "Paged Trip 01" in page2
+    assert "Paged Trip 03" not in page2
+
+    too_high = client.get("/trips?page=999").get_data(as_text=True)
+    assert "Page 2 of 2" in too_high
+    assert "Paged Trip 02" in too_high
+
+    negative = client.get("/trips?page=-5").get_data(as_text=True)
+    assert "Page 1 of 2" in negative
+    assert "Paged Trip 26" in negative
+
+    invalid = client.get("/trips?page=not-a-number").get_data(as_text=True)
+    assert "Page 1 of 2" in invalid
+    assert "Paged Trip 26" in invalid
+
+
+def test_trips_pagination_preserves_filters_search_and_sort(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-filters@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-page-filters@example.com").first()
+        assert user is not None
+        camp_trips = [
+            Trip(
+                user_id=user.id,
+                name=f"Camp Trip {i:02d}",
+                notes="camp search marker",
+                start_date="2000-01-01",
+                end_date="2099-12-31",
+            )
+            for i in range(1, 26)
+        ]
+        db.add_all(camp_trips)
+        db.flush()
+        db.add_all(
+            [
+                TripChecklistItem(trip_id=trip.id, text="Preparation task")
+                for trip in camp_trips
+            ]
+        )
+        db.add(
+            Trip(
+                user_id=user.id,
+                name="Hotel Trip",
+                notes="hotel marker",
+                start_date="2000-01-01",
+                end_date="2099-12-31",
+            )
+        )
+        db.commit()
+
+    url = "/trips?q=camp&prep=incomplete&date=active&sort=name_asc&page=2"
+    body = client.get(url).get_data(as_text=True)
+    assert "Page 2 of 2" in body
+    assert "25 trips" in body
+    assert "Camp Trip 25" in body
+    assert "Camp Trip 24" not in body
+    assert "Hotel Trip" not in body
+    assert "q=camp" in body
+    assert "prep=incomplete" in body
+    assert "date=active" in body
+    assert "sort=name_asc" in body
+    assert "page=1" in body
+
+
+def test_trips_pagination_remains_ownership_scoped(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        user_a = db.query(User).filter_by(email="trip-page-owner-a@example.com").first()
+        assert user_a is not None
+        db.add_all(
+            [Trip(user_id=user_a.id, name=f"Owner A Trip {i:02d}") for i in range(1, 30)]
+        )
+        db.commit()
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "trip-page-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Only Trip"}, follow_redirects=True)
+
+    body = client.get("/trips?page=2").get_data(as_text=True)
+    assert "Page 1 of 1" in body
+    assert "1 trip" in body
+    assert "Owner B Only Trip" in body
+    assert "Owner A Trip" not in body
