@@ -323,6 +323,14 @@ def saved_places() -> str:
         .scalars()
         .all()
     )
+
+    visibility = clean_str(request.args.get("visibility")) or "active"
+    if visibility not in {"active", "archived", "all"}:
+        visibility = "active"
+    if visibility == "active":
+        trips = [trip for trip in trips if not trip.archived]
+    elif visibility == "archived":
+        trips = [trip for trip in trips if trip.archived]
     return render_template("public/saved.html", places=places, trips=trips)
 
 
@@ -681,6 +689,7 @@ def trips() -> str:
         trip_search=trip_search,
         date_filter=date_filter,
         trip_sort=trip_sort,
+        visibility=visibility,
         trip_page=trip_page,
         total_pages=total_pages,
         total_trips=total_trips,
@@ -1120,6 +1129,7 @@ def trip_duplicate(trip_id: int):
         notes=source.notes,
         start_date=duplicate_start_date,
         end_date=duplicate_end_date,
+        archived=False,
     )
     db.add(duplicate)
     db.flush()
@@ -1177,6 +1187,28 @@ def trip_duplicate(trip_id: int):
     db.commit()
     flash("Trip duplicated", "info")
     return redirect(url_for("public.trip_detail", trip_id=duplicate.id))
+
+
+@public_bp.route("/trips/<int:trip_id>/archive", methods=["POST"])
+@login_required
+def trip_archive(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    trip.archived = True
+    db.commit()
+    flash("Trip archived", "info")
+    return redirect(url_for("public.trips", visibility="archived"))
+
+
+@public_bp.route("/trips/<int:trip_id>/restore", methods=["POST"])
+@login_required
+def trip_restore(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    trip.archived = False
+    db.commit()
+    flash("Trip restored", "info")
+    return redirect(url_for("public.trips"))
 
 
 @public_bp.route("/trips/<int:trip_id>/delete", methods=["POST"])
