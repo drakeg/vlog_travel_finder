@@ -3458,3 +3458,153 @@ def test_trip_date_filter_empty_state_and_ownership(client):
     assert "Owner A Future" not in upcoming
     assert "Owner B Undated" not in upcoming
     assert "No trips match the current search or filters." in upcoming
+
+
+def test_trip_sorting_newest_oldest_names_and_start_date(client):
+    client.post(
+        "/register",
+        data={"email": "trip-sort@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    trips = [
+        ("Bravo Trip", "2099-05-01", "2099-05-02"),
+        ("Alpha Trip", "", ""),
+        ("Charlie Trip", "2099-01-01", "2099-01-02"),
+    ]
+    for name, start_date, end_date in trips:
+        client.post(
+            "/trips",
+            data={"name": name, "start_date": start_date, "end_date": end_date},
+            follow_redirects=True,
+        )
+
+    newest = client.get("/trips?sort=newest").get_data(as_text=True)
+    assert newest.index("Charlie Trip") < newest.index("Alpha Trip") < newest.index("Bravo Trip")
+
+    oldest = client.get("/trips?sort=oldest").get_data(as_text=True)
+    assert oldest.index("Bravo Trip") < oldest.index("Alpha Trip") < oldest.index("Charlie Trip")
+
+    name_asc = client.get("/trips?sort=name_asc").get_data(as_text=True)
+    assert name_asc.index("Alpha Trip") < name_asc.index("Bravo Trip") < name_asc.index("Charlie Trip")
+
+    name_desc = client.get("/trips?sort=name_desc").get_data(as_text=True)
+    assert name_desc.index("Charlie Trip") < name_desc.index("Bravo Trip") < name_desc.index("Alpha Trip")
+
+    by_start = client.get("/trips?sort=start").get_data(as_text=True)
+    assert by_start.index("Charlie Trip") < by_start.index("Bravo Trip") < by_start.index("Alpha Trip")
+
+
+def test_trip_sorting_preparation_urgency_and_tie_breaking(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-sort-prep@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    for name in [
+        "No Checklist",
+        "Complete Prep",
+        "Incomplete Older",
+        "Incomplete Newer",
+        "Overdue Prep",
+    ]:
+        client.post("/trips", data={"name": name}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        ids = {
+            trip.name: trip.id
+            for trip in db.query(Trip)
+            .filter(Trip.name.in_([
+                "No Checklist",
+                "Complete Prep",
+                "Incomplete Older",
+                "Incomplete Newer",
+                "Overdue Prep",
+            ]))
+            .all()
+        }
+
+    client.post(
+        f"/trips/{ids['Overdue Prep']}/checklist",
+        data={"text": "Late", "due_date": "2000-01-01"},
+    )
+    client.post(f"/trips/{ids['Incomplete Older']}/checklist", data={"text": "Older todo"})
+    client.post(f"/trips/{ids['Incomplete Newer']}/checklist", data={"text": "Newer todo"})
+    client.post(f"/trips/{ids['Complete Prep']}/checklist", data={"text": "Done"})
+    with app.app_context():
+        db = get_session(app)
+        done = db.query(TripChecklistItem).filter_by(trip_id=ids["Complete Prep"]).first()
+        assert done is not None
+        done_id = done.id
+    client.post(f"/trips/{ids['Complete Prep']}/checklist/{done_id}/toggle")
+
+    body = client.get("/trips?sort=prep").get_data(as_text=True)
+    assert body.index("Overdue Prep") < body.index("Incomplete Newer")
+    assert body.index("Incomplete Newer") < body.index("Incomplete Older")
+    assert body.index("Incomplete Older") < body.index("Complete Prep")
+    assert body.index("Complete Prep") < body.index("No Checklist")
+
+
+def test_trip_sorting_composes_with_filters_and_unknown_falls_back_to_newest(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-sort-compose@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    for name in ["Camp Zulu", "Camp Alpha", "Hotel Beta"]:
+        client.post(
+            "/trips",
+            data={
+                "name": name,
+                "start_date": "2000-01-01",
+                "end_date": "2099-12-31",
+            },
+            follow_redirects=True,
+        )
+
+    with app.app_context():
+        db = get_session(app)
+        ids = {
+            trip.name: trip.id
+            for trip in db.query(Trip)
+            .filter(Trip.name.in_(["Camp Zulu", "Camp Alpha", "Hotel Beta"]))
+            .all()
+        }
+    for name in ["Camp Zulu", "Camp Alpha"]:
+        client.post(f"/trips/{ids[name]}/checklist", data={"text": "Todo"})
+
+    composed = client.get(
+        "/trips?q=camp&prep=incomplete&date=active&sort=name_asc"
+    ).get_data(as_text=True)
+    assert composed.index("Camp Alpha") < composed.index("Camp Zulu")
+    assert "Hotel Beta" not in composed
+    assert 'value="camp"' in composed
+    assert 'value="incomplete" selected' in composed
+    assert 'value="active" selected' in composed
+    assert 'value="name_asc" selected' in composed
+    assert "sort=name_asc" in composed
+
+    fallback = client.get("/trips?sort=bogus").get_data(as_text=True)
+    assert fallback.index("Hotel Beta") < fallback.index("Camp Alpha") < fallback.index("Camp Zulu")
+    assert 'value="newest" selected' in fallback
+
+
+def test_trip_sorting_is_ownership_scoped(client):
+    client.post(
+        "/register",
+        data={"email": "trip-sort-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Alpha"}, follow_redirects=True)
+    client.post("/logout")
+
+    client.post(
+        "/register",
+        data={"email": "trip-sort-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Zulu"}, follow_redirects=True)
+
+    body = client.get("/trips?sort=name_asc").get_data(as_text=True)
+    assert "Owner B Zulu" in body
+    assert "Owner A Alpha" not in body

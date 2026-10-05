@@ -60,6 +60,21 @@
         {% endfor %}
       </select>
     </div>
+    <div class="col-6 col-md-auto">
+      <select class="form-select" name="sort" aria-label="Trip sort order">
+        {% set sort_options = [
+          ("newest", "Newest"),
+          ("oldest", "Oldest"),
+          ("start", "Start date"),
+          ("name_asc", "Name A-Z"),
+          ("name_desc", "Name Z-A"),
+          ("prep", "Preparation urgency")
+        ] %}
+        {% for value, label in sort_options %}
+          <option value="{{ value }}" {% if trip_sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="col-6 col-md-auto d-grid">
       <button class="btn btn-outline-primary" type="submit">
         <i class="fa-solid fa-magnifying-glass me-1"></i>Search
@@ -78,7 +93,7 @@
     {% for value, label in filters %}
       <a
         class="btn btn-sm {% if prep_filter == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-        href="{{ url_for('public.trips', prep=value, q=trip_search or None, date=date_filter if date_filter != 'all' else None) }}"
+        href="{{ url_for('public.trips', prep=value, q=trip_search or None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None) }}"
       >{{ label }}</a>
     {% endfor %}
   </div>
@@ -94,7 +109,7 @@
     {% for value, label in date_filters %}
       <a
         class="btn btn-sm {% if date_filter == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-        href="{{ url_for('public.trips', date=value, prep=prep_filter if prep_filter != 'all' else None, q=trip_search or None) }}"
+        href="{{ url_for('public.trips', date=value, prep=prep_filter if prep_filter != 'all' else None, q=trip_search or None, sort=trip_sort if trip_sort != 'newest' else None) }}"
       >{{ label }}</a>
     {% endfor %}
   </div>
