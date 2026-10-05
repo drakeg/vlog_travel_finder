@@ -4040,3 +4040,154 @@ def test_bulk_trip_archive_mixed_state_only_counts_changes(client, app):
         follow_redirects=True,
     )
     assert "No selected trips were changed" in second.get_data(as_text=True)
+
+
+def test_trips_page_size_options_and_fallback(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-size@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-page-size@example.com").first()
+        assert user is not None
+        db.add_all(
+            [Trip(user_id=user.id, name=f"Page Size Trip {i:03d}") for i in range(1, 61)]
+        )
+        db.commit()
+
+    default = client.get("/trips").get_data(as_text=True)
+    assert "Page 1 of 3" in default
+    assert 'value="24" selected' in default
+    assert "Page Size Trip 060" in default
+    assert "Page Size Trip 036" not in default
+
+    twelve = client.get("/trips?page_size=12").get_data(as_text=True)
+    assert "Page 1 of 5" in twelve
+    assert 'value="12" selected' in twelve
+    assert "Page Size Trip 060" in twelve
+    assert "Page Size Trip 048" not in twelve
+
+    forty_eight = client.get("/trips?page_size=48").get_data(as_text=True)
+    assert "Page 1 of 2" in forty_eight
+    assert 'value="48" selected' in forty_eight
+    assert "Page Size Trip 060" in forty_eight
+    assert "Page Size Trip 012" not in forty_eight
+
+    ninety_six = client.get("/trips?page_size=96").get_data(as_text=True)
+    assert "Page 1 of 1" in ninety_six
+    assert 'value="96" selected' in ninety_six
+    assert "Page Size Trip 001" in ninety_six
+
+    invalid = client.get("/trips?page_size=13").get_data(as_text=True)
+    assert "Page 1 of 3" in invalid
+    assert 'value="24" selected' in invalid
+
+    malformed = client.get("/trips?page_size=abc").get_data(as_text=True)
+    assert "Page 1 of 3" in malformed
+    assert 'value="24" selected' in malformed
+
+
+def test_trips_page_size_preserves_context_and_clamps_page(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-size-context@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-page-size-context@example.com").first()
+        assert user is not None
+        db.add_all(
+            [
+                Trip(
+                    user_id=user.id,
+                    name=f"Camp Page {i:03d}",
+                    notes="keep-search",
+                    archived=False,
+                )
+                for i in range(1, 31)
+            ]
+        )
+        db.commit()
+
+    page2 = client.get(
+        "/trips?q=camp&prep=all&date=all&sort=name_asc&visibility=active"
+        "&page_size=12&page=2"
+    ).get_data(as_text=True)
+    assert "Page 2 of 3" in page2
+    assert "page_size=12" in page2
+    assert "q=camp" in page2
+    assert "sort=name_asc" in page2
+    assert 'value="12" selected' in page2
+
+    clamped = client.get("/trips?page_size=48&page=99").get_data(as_text=True)
+    assert "Page 1 of 1" in clamped
+    assert 'value="48" selected' in clamped
+
+
+def test_bulk_trip_archive_preserves_page_size_context(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-size-bulk@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Bulk Page Size Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Bulk Page Size Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    response = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "archive",
+            "trip_ids": [str(trip_id)],
+            "next": "/trips?page_size=12&page=1&sort=name_asc",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        "/trips?page_size=12&page=1&sort=name_asc"
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.get(Trip, trip_id)
+        assert trip is not None
+        assert trip.archived is True
+
+
+def test_trips_page_size_remains_ownership_scoped(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-page-size-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        db = get_session(app)
+        owner_a = db.query(User).filter_by(email="trip-page-size-owner-a@example.com").first()
+        assert owner_a is not None
+        db.add_all(
+            [Trip(user_id=owner_a.id, name=f"Owner A Hidden {i:02d}") for i in range(1, 20)]
+        )
+        db.commit()
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "trip-page-size-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Visible"}, follow_redirects=True)
+
+    body = client.get("/trips?page_size=12").get_data(as_text=True)
+    assert "Owner B Visible" in body
+    assert "Owner A Hidden" not in body
+    assert "1 trip" in body
