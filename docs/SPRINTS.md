@@ -735,24 +735,48 @@ Deferred:
 
 ### Sprint 28 — Trip sorting
 
-Status: In progress
+Status: Complete
 
 Planning issue: #199
 
-Current work:
+Shipped:
 
-- #200 — sort filtered trips by newest, oldest, start date, name, or preparation urgency;
-- keep Newest as the default;
-- retain active search/preparation/date filters while sorting;
-- place undated trips last when sorting by start date;
-- prioritize overdue, incomplete, complete, then no-checklist trips for preparation urgency;
-- preserve deterministic tie-breaking;
-- fall back to Newest for unknown sort values;
-- add all-sort, tie-breaking, composition, fallback, and ownership regression coverage.
+- Newest, Oldest, Start date, Name A-Z, Name Z-A, and Preparation urgency sorting;
+- Newest as the default;
+- active search, preparation, and date filters retained while sorting;
+- undated trips placed last for start-date sorting;
+- preparation urgency ordered overdue, incomplete, complete, then no checklist;
+- deterministic tie behavior;
+- unknown sort values fall back to Newest;
+- all-sort, tie-breaking, composition, fallback, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - drag-and-drop trip ordering;
 - persisted per-user sort preference;
 - custom multi-column sorting;
 - database-level pagination.
+
+### Sprint 29 — Trips pagination
+
+Status: In progress
+
+Planning issue: #202
+
+Current work:
+
+- #203 — paginate the Trips overview at 24 trips per page;
+- apply pagination after search, preparation/date filtering, and sorting;
+- preserve active search/filter/sort parameters in pagination links;
+- show current page and total page count;
+- safely clamp invalid, negative, zero, and too-large page values;
+- preserve deterministic ordering across pages;
+- keep trip creation and existing controls unchanged;
+- add page-boundary, parameter-preservation, clamping, filtered/sorted, and ownership regression coverage.
+
+Out of scope:
+
+- user-configurable page size;
+- infinite scrolling;
+- database-level pagination;
+- persisted page position.
