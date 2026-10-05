@@ -3804,7 +3804,7 @@ def test_archived_trip_direct_access_and_duplicate_copy_is_active(client, app):
 
     default_body = client.get("/trips").get_data(as_text=True)
     assert "Archived Source (Copy)" in default_body
-    assert "Archived Source" not in default_body
+    assert f'href="/trips/{source_id}"' not in default_body
 
 
 def test_trip_visibility_composes_with_search_filters_sort_and_pagination(client, app):
