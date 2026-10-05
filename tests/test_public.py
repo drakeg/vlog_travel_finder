@@ -3735,3 +3735,147 @@ def test_trips_pagination_remains_ownership_scoped(client, app):
     assert "1 trip" in body
     assert "Owner B Only Trip" in body
     assert "Owner A Trip" not in body
+
+
+def test_trip_archive_restore_and_default_visibility(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-archive@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Keep Active"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Archive Me"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        archived_trip = db.query(Trip).filter_by(name="Archive Me").first()
+        assert archived_trip is not None
+        archived_id = archived_trip.id
+
+    client.post(f"/trips/{archived_id}/archive", follow_redirects=True)
+
+    default_body = client.get("/trips").get_data(as_text=True)
+    assert "Keep Active" in default_body
+    assert "Archive Me" not in default_body
+
+    archived_body = client.get("/trips?visibility=archived").get_data(as_text=True)
+    assert "Archive Me" in archived_body
+    assert "Keep Active" not in archived_body
+    assert 'value="archived" selected' in archived_body
+
+    all_body = client.get("/trips?visibility=all").get_data(as_text=True)
+    assert "Archive Me" in all_body
+    assert "Keep Active" in all_body
+
+    client.post(f"/trips/{archived_id}/restore", follow_redirects=True)
+    restored = client.get("/trips").get_data(as_text=True)
+    assert "Archive Me" in restored
+
+
+def test_archived_trip_direct_access_and_duplicate_copy_is_active(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-archive-copy@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Archived Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Archived Source").first()
+        assert source is not None
+        source_id = source.id
+
+    client.post(f"/trips/{source_id}/archive")
+
+    direct = client.get(f"/trips/{source_id}")
+    assert direct.status_code == 200
+    assert "Archived Source" in direct.get_data(as_text=True)
+
+    client.post(f"/trips/{source_id}/duplicate", follow_redirects=False)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.get(Trip, source_id)
+        copy = db.query(Trip).filter_by(name="Archived Source (Copy)").first()
+        assert source is not None and copy is not None
+        assert source.archived is True
+        assert copy.archived is False
+
+    default_body = client.get("/trips").get_data(as_text=True)
+    assert "Archived Source (Copy)" in default_body
+    assert f'href="/trips/{source_id}"' not in default_body
+
+
+def test_trip_visibility_composes_with_search_filters_sort_and_pagination(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-archive-compose@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-archive-compose@example.com").first()
+        assert user is not None
+        trips = [
+            Trip(
+                user_id=user.id,
+                name=f"Archived Camp {i:02d}",
+                notes="camp archive marker",
+                start_date="2000-01-01",
+                end_date="2099-12-31",
+                archived=True,
+            )
+            for i in range(1, 26)
+        ]
+        db.add_all(trips)
+        db.flush()
+        db.add_all(
+            [TripChecklistItem(trip_id=trip.id, text="Todo") for trip in trips]
+        )
+        db.add(
+            Trip(
+                user_id=user.id,
+                name="Active Camp",
+                notes="camp archive marker",
+                start_date="2000-01-01",
+                end_date="2099-12-31",
+                archived=False,
+            )
+        )
+        db.commit()
+
+    body = client.get(
+        "/trips?q=camp&prep=incomplete&date=active&sort=name_asc&visibility=archived&page=2"
+    ).get_data(as_text=True)
+    assert "Page 2 of 2" in body
+    assert "25 trips" in body
+    assert "Archived Camp 25" in body
+    assert "Active Camp" not in body
+    assert 'value="archived" selected' in body
+    assert "visibility=archived" in body
+
+
+def test_trip_archive_restore_rejects_cross_user(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-archive-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Archive Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owner A Archive Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "trip-archive-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    assert client.post(f"/trips/{trip_id}/archive").status_code == 404
+    assert client.post(f"/trips/{trip_id}/restore").status_code == 404
