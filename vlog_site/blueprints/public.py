@@ -695,6 +695,7 @@ def trips() -> str:
         trip_page=trip_page,
         total_pages=total_pages,
         total_trips=total_trips,
+        trip_return_url=request.full_path.rstrip("?"),
     )
 
 
@@ -1211,6 +1212,60 @@ def trip_restore(trip_id: int):
     db.commit()
     flash("Trip restored", "info")
     return redirect(url_for("public.trips"))
+
+
+@public_bp.route("/trips/bulk-archive", methods=["POST"])
+@login_required
+def trip_bulk_archive():
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+    action = clean_str(request.form.get("action"))
+    if action not in {"archive", "restore"}:
+        abort(404)
+
+    selected_ids: list[int] = []
+    for raw in request.form.getlist("trip_ids"):
+        try:
+            trip_id = int(raw)
+        except ValueError:
+            continue
+        if trip_id not in selected_ids:
+            selected_ids.append(trip_id)
+
+    next_url = _safe_local_next(
+        request.form.get("next"),
+        url_for("public.trips"),
+    )
+    if not selected_ids:
+        flash("Select at least one trip", "error")
+        return redirect(next_url)
+
+    selected_trips = (
+        db.execute(
+            select(Trip).where(
+                Trip.user_id == user_id,
+                Trip.id.in_(selected_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    target_archived = action == "archive"
+    changed = 0
+    for trip in selected_trips:
+        if trip.archived != target_archived:
+            trip.archived = target_archived
+            changed += 1
+
+    if changed:
+        db.commit()
+        verb = "Archived" if target_archived else "Restored"
+        flash(f"{verb} {changed} trip{'s' if changed != 1 else ''}", "info")
+    else:
+        flash("No selected trips were changed", "info")
+
+    return redirect(next_url)
 
 
 @public_bp.route("/trips/<int:trip_id>/delete", methods=["POST"])

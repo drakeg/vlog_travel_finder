@@ -127,12 +127,36 @@
   </div>
 
   {% if trips %}
+    <form id="bulk-trip-form" method="post" action="{{ url_for('public.trip_bulk_archive') }}" class="d-flex gap-2 flex-wrap align-items-center mb-3">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="next" value="{{ trip_return_url }}" />
+      <span class="small text-body-secondary">Selected trips:</span>
+      <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="archive">
+        <i class="fa-solid fa-box-archive me-1"></i>Archive selected
+      </button>
+      <button class="btn btn-sm btn-outline-success" type="submit" name="action" value="restore">
+        <i class="fa-solid fa-box-open me-1"></i>Restore selected
+      </button>
+    </form>
     <div class="row g-3">
       {% for trip in trips %}
         <div class="col-12 col-md-6 col-xl-4">
           <div class="card shadow-sm h-100">
             <div class="card-body d-flex flex-column">
-              <h2 class="h5">{{ trip.name }}</h2>
+              <div class="d-flex align-items-start justify-content-between gap-2">
+                <h2 class="h5 mb-0">{{ trip.name }}</h2>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="trip_ids"
+                    value="{{ trip.id }}"
+                    id="trip-select-{{ trip.id }}"
+                    form="bulk-trip-form"
+                    aria-label="Select {{ trip.name }}"
+                  />
+                </div>
+              </div>
               <div class="text-muted mb-2">
                 {{ trip_counts.get(trip.id, 0) }} place{% if trip_counts.get(trip.id, 0) != 1 %}s{% endif %}
               </div>

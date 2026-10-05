@@ -3879,3 +3879,164 @@ def test_trip_archive_restore_rejects_cross_user(client, app):
 
     assert client.post(f"/trips/{trip_id}/archive").status_code == 404
     assert client.post(f"/trips/{trip_id}/restore").status_code == 404
+
+
+def test_bulk_trip_archive_and_restore_selected_owned_trips(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-archive@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    for name in ["Bulk One", "Bulk Two", "Bulk Three"]:
+        client.post("/trips", data={"name": name}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trips = {
+            trip.name: trip.id
+            for trip in db.query(Trip)
+            .filter(Trip.name.in_(["Bulk One", "Bulk Two", "Bulk Three"]))
+            .all()
+        }
+
+    archive = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "archive",
+            "trip_ids": [str(trips["Bulk One"]), str(trips["Bulk Two"])],
+            "next": "/trips?visibility=all",
+        },
+        follow_redirects=True,
+    )
+    body = archive.get_data(as_text=True)
+    assert "Archived 2 trips" in body
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(Trip, trips["Bulk One"]).archived is True
+        assert db.get(Trip, trips["Bulk Two"]).archived is True
+        assert db.get(Trip, trips["Bulk Three"]).archived is False
+
+    restore = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "restore",
+            "trip_ids": [str(trips["Bulk One"]), str(trips["Bulk Two"])],
+            "next": "/trips?visibility=all",
+        },
+        follow_redirects=True,
+    )
+    assert "Restored 2 trips" in restore.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(Trip, trips["Bulk One"]).archived is False
+        assert db.get(Trip, trips["Bulk Two"]).archived is False
+
+
+def test_bulk_trip_archive_no_selection_and_context_preservation(client):
+    client.post(
+        "/register",
+        data={"email": "bulk-archive-context@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Context Trip"}, follow_redirects=True)
+
+    next_url = (
+        "/trips?q=context&prep=none&date=undated&sort=name_asc"
+        "&visibility=all&page=1"
+    )
+    response = client.post(
+        "/trips/bulk-archive",
+        data={"action": "archive", "next": next_url},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(next_url)
+
+    follow = client.get(response.headers["Location"])
+    assert "Select at least one trip" in follow.get_data(as_text=True)
+
+
+def test_bulk_trip_archive_ignores_invalid_and_non_owned_ids(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Bulk"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        owner_a = db.query(Trip).filter_by(name="Owner A Bulk").first()
+        assert owner_a is not None
+        owner_a_id = owner_a.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "bulk-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner B Bulk"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        owner_b = db.query(Trip).filter_by(name="Owner B Bulk").first()
+        assert owner_b is not None
+        owner_b_id = owner_b.id
+
+    response = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "archive",
+            "trip_ids": [str(owner_b_id), str(owner_a_id), "bad-id", "999999"],
+            "next": "/trips?visibility=all",
+        },
+        follow_redirects=True,
+    )
+    assert "Archived 1 trip" in response.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(Trip, owner_b_id).archived is True
+        assert db.get(Trip, owner_a_id).archived is False
+
+
+def test_bulk_trip_archive_mixed_state_only_counts_changes(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-mixed@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Already Archived"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Needs Archive"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        archived = db.query(Trip).filter_by(name="Already Archived").first()
+        active = db.query(Trip).filter_by(name="Needs Archive").first()
+        assert archived is not None and active is not None
+        archived.archived = True
+        db.commit()
+        archived_id, active_id = archived.id, active.id
+
+    response = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "archive",
+            "trip_ids": [str(archived_id), str(active_id)],
+            "next": "/trips?visibility=all",
+        },
+        follow_redirects=True,
+    )
+    assert "Archived 1 trip" in response.get_data(as_text=True)
+
+    second = client.post(
+        "/trips/bulk-archive",
+        data={
+            "action": "archive",
+            "trip_ids": [str(archived_id), str(active_id)],
+            "next": "/trips?visibility=all",
+        },
+        follow_redirects=True,
+    )
+    assert "No selected trips were changed" in second.get_data(as_text=True)

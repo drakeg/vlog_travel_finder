@@ -783,25 +783,51 @@ Deferred:
 
 ### Sprint 30 — Trip archiving
 
-Status: In progress
+Status: Complete
 
 Planning issue: #206
 
-Current work:
+Shipped:
 
-- #207 — archive and restore owned trips;
-- hide archived trips from the default Trips view;
-- add Active trips, Archived trips, and All trips visibility options;
-- compose visibility with search, preparation/date filters, sorting, and pagination;
-- preserve active controls across links;
-- keep archived trips directly viewable by their owner;
-- ensure duplicating an archived trip creates an active copy;
-- add non-destructive SQLite schema version 14;
-- add archive/restore, visibility, composition, direct-access, duplication, migration, and ownership regression coverage.
+- schema-versioned trip archived flag;
+- owner-only archive and restore actions;
+- archived trips hidden from the default Trips view;
+- Active trips, Archived trips, and All trips visibility options;
+- visibility composed with search, preparation/date filters, sorting, and pagination;
+- active controls preserved across links;
+- archived trips remain directly accessible to their owner;
+- duplicating an archived trip creates an active copy;
+- non-destructive SQLite schema version 14;
+- archive/restore, visibility, composition, direct-access, duplication, migration, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - automatic archival;
 - bulk archive/restore;
 - soft-deleted checklist items;
 - archive retention policies.
+
+### Sprint 31 — Bulk trip archive actions
+
+Status: In progress
+
+Planning issue: #209
+
+Current work:
+
+- #210 — select multiple trips on the current page;
+- archive selected owned trips in one action;
+- restore selected owned trips in one action;
+- ignore invalid and non-owned IDs without exposing or mutating them;
+- preserve unrelated trip state and content;
+- return to the current visibility/search/filter/sort/page context;
+- show clear no-selection and changed-count messages;
+- keep pagination behavior intact;
+- add archive/restore, no-selection, invalid-ID, ownership, context, and mixed-state regression coverage.
+
+Out of scope:
+
+- bulk delete;
+- select-all across every page;
+- automatic archival rules;
+- background actions.

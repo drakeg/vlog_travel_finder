@@ -39,6 +39,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Filtered trip lists can be sorted by recency, start date, name, or preparation urgency
   - Trips results are paginated 24 per page while preserving active search, filters, and sorting
   - Trips can be archived and restored, with archived trips hidden from the default view
+  - Multiple trips on the current page can be selected and archived or restored in one action
   - Scheduled stops are presented in day-by-day itinerary groups with unscheduled stops kept visible
   - Itinerary days can open their ordered routable stops as a Google Maps driving route without a paid API
   - Trips have print-friendly, plain-text, and iCalendar (.ics) itinerary exports
