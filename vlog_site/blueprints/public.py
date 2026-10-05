@@ -661,6 +661,17 @@ def trips() -> str:
 
         trips = sorted(trips, key=prep_rank)
 
+    page_size = 24
+    total_trips = len(trips)
+    total_pages = max(1, (total_trips + page_size - 1) // page_size)
+    try:
+        trip_page = int(request.args.get("page", "1"))
+    except ValueError:
+        trip_page = 1
+    trip_page = max(1, min(trip_page, total_pages))
+    page_start = (trip_page - 1) * page_size
+    trips = trips[page_start : page_start + page_size]
+
     return render_template(
         "public/trips.html",
         trips=trips,
@@ -670,6 +681,9 @@ def trips() -> str:
         trip_search=trip_search,
         date_filter=date_filter,
         trip_sort=trip_sort,
+        trip_page=trip_page,
+        total_pages=total_pages,
+        total_trips=total_trips,
     )
 
 
