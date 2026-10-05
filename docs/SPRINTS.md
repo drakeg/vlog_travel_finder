@@ -809,25 +809,47 @@ Deferred:
 
 ### Sprint 31 — Bulk trip archive actions
 
-Status: In progress
+Status: Complete
 
 Planning issue: #209
 
-Current work:
+Shipped:
 
-- #210 — select multiple trips on the current page;
-- archive selected owned trips in one action;
-- restore selected owned trips in one action;
-- ignore invalid and non-owned IDs without exposing or mutating them;
-- preserve unrelated trip state and content;
-- return to the current visibility/search/filter/sort/page context;
-- show clear no-selection and changed-count messages;
-- keep pagination behavior intact;
-- add archive/restore, no-selection, invalid-ID, ownership, context, and mixed-state regression coverage.
+- per-trip selection checkboxes on the Trips overview;
+- bulk archive and restore actions for selected owned trips;
+- invalid/non-owned IDs ignored without authorization leaks;
+- unrelated trip content/state preserved;
+- current visibility/search/filter/sort/page context retained;
+- clear no-selection and changed-count messages;
+- pagination behavior preserved;
+- multi-select, no-selection, invalid-ID, ownership, context, and mixed-state regression coverage.
 
-Out of scope:
+Deferred:
 
 - bulk delete;
 - select-all across every page;
 - automatic archival rules;
 - background actions.
+
+### Sprint 32 — Configurable Trips page size
+
+Status: In progress
+
+Planning issue: #212
+
+Current work:
+
+- #213 — offer 12, 24, 48, and 96 trips per page;
+- keep 24 as the default;
+- fall back to 24 for invalid or unsupported values;
+- preserve page size across search, filters, sorting, visibility, pagination, and bulk archive/restore;
+- safely clamp the current page when page size changes;
+- keep ownership scoping unchanged;
+- add option, fallback, context, clamping, bulk-action, and ownership regression coverage.
+
+Out of scope:
+
+- arbitrary custom page sizes;
+- infinite scrolling;
+- persisted per-user preference;
+- database-level pagination.

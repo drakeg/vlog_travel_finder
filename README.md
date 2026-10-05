@@ -36,6 +36,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Trips can be filtered by preparation status: all, overdue, incomplete, complete, or no checklist
   - Trips can be searched by name or notes, including alongside preparation filters
   - Trips can be filtered by date state: upcoming, active, past, or undated
+  - Trips support selectable page sizes of 12, 24, 48, or 96
   - Filtered trip lists can be sorted by recency, start date, name, or preparation urgency
   - Trips results are paginated 24 per page while preserving active search, filters, and sorting
   - Trips can be archived and restored, with archived trips hidden from the default view
