@@ -671,7 +671,13 @@ def trips() -> str:
 
         trips = sorted(trips, key=prep_rank)
 
-    page_size = 24
+    try:
+        page_size = int(request.args.get("page_size", "24"))
+    except ValueError:
+        page_size = 24
+    if page_size not in {12, 24, 48, 96}:
+        page_size = 24
+
     total_trips = len(trips)
     total_pages = max(1, (total_trips + page_size - 1) // page_size)
     try:
@@ -695,6 +701,7 @@ def trips() -> str:
         trip_page=trip_page,
         total_pages=total_pages,
         total_trips=total_trips,
+        page_size=page_size,
         trip_return_url=request.full_path.rstrip("?"),
     )
 
