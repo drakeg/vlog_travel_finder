@@ -143,7 +143,7 @@ def test_upgrade_version_12_adds_checklist_due_date_without_losing_items(tmp_pat
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 13
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 14
         columns = {
             row[1]
             for row in conn.execute(text("PRAGMA table_info(trip_checklist_item)"))
