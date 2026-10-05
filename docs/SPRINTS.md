@@ -759,24 +759,49 @@ Deferred:
 
 ### Sprint 29 — Trips pagination
 
-Status: In progress
+Status: Complete
 
 Planning issue: #202
 
-Current work:
+Shipped:
 
-- #203 — paginate the Trips overview at 24 trips per page;
-- apply pagination after search, preparation/date filtering, and sorting;
-- preserve active search/filter/sort parameters in pagination links;
-- show current page and total page count;
-- safely clamp invalid, negative, zero, and too-large page values;
-- preserve deterministic ordering across pages;
-- keep trip creation and existing controls unchanged;
-- add page-boundary, parameter-preservation, clamping, filtered/sorted, and ownership regression coverage.
+- 24 trips per page;
+- pagination applied after search, preparation/date filtering, and sorting;
+- q, prep, date, and sort parameters preserved in pagination links;
+- current page, total pages, and filtered trip count displayed;
+- invalid, negative, zero, and overly large pages safely clamped;
+- deterministic ordering preserved across pages;
+- trip creation and existing controls unchanged;
+- page-boundary, parameter-preservation, clamping, filtered/sorted, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - user-configurable page size;
 - infinite scrolling;
 - database-level pagination;
 - persisted page position.
+
+### Sprint 30 — Trip archiving
+
+Status: In progress
+
+Planning issue: #206
+
+Current work:
+
+- #207 — archive and restore owned trips;
+- hide archived trips from the default Trips view;
+- add Active trips, Archived trips, and All trips visibility options;
+- compose visibility with search, preparation/date filters, sorting, and pagination;
+- preserve active controls across links;
+- keep archived trips directly viewable by their owner;
+- ensure duplicating an archived trip creates an active copy;
+- add non-destructive SQLite schema version 14;
+- add archive/restore, visibility, composition, direct-access, duplication, migration, and ownership regression coverage.
+
+Out of scope:
+
+- automatic archival;
+- bulk archive/restore;
+- soft-deleted checklist items;
+- archive retention policies.
