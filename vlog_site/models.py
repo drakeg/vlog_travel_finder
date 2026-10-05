@@ -77,6 +77,7 @@ class Trip(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_date: Mapped[str | None] = mapped_column(String, nullable=True)
     end_date: Mapped[str | None] = mapped_column(String, nullable=True)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,
