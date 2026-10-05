@@ -75,6 +75,18 @@
         {% endfor %}
       </select>
     </div>
+    <div class="col-6 col-md-auto">
+      <select class="form-select" name="visibility" aria-label="Trip visibility">
+        {% set visibility_options = [
+          ("active", "Active trips"),
+          ("archived", "Archived trips"),
+          ("all", "All trips")
+        ] %}
+        {% for value, label in visibility_options %}
+          <option value="{{ value }}" {% if visibility == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="col-6 col-md-auto d-grid">
       <button class="btn btn-outline-primary" type="submit">
         <i class="fa-solid fa-magnifying-glass me-1"></i>Search
@@ -93,7 +105,7 @@
     {% for value, label in filters %}
       <a
         class="btn btn-sm {% if prep_filter == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-        href="{{ url_for('public.trips', prep=value, q=trip_search or None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None) }}"
+        href="{{ url_for('public.trips', prep=value, q=trip_search or None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None, visibility=visibility if visibility != 'active' else None) }}"
       >{{ label }}</a>
     {% endfor %}
   </div>
@@ -109,7 +121,7 @@
     {% for value, label in date_filters %}
       <a
         class="btn btn-sm {% if date_filter == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-        href="{{ url_for('public.trips', date=value, prep=prep_filter if prep_filter != 'all' else None, q=trip_search or None, sort=trip_sort if trip_sort != 'newest' else None) }}"
+        href="{{ url_for('public.trips', date=value, prep=prep_filter if prep_filter != 'all' else None, q=trip_search or None, sort=trip_sort if trip_sort != 'newest' else None, visibility=visibility if visibility != 'active' else None) }}"
       >{{ label }}</a>
     {% endfor %}
   </div>
@@ -156,6 +168,21 @@
                 <a class="btn btn-outline-primary flex-grow-1" href="{{ url_for('public.trip_detail', trip_id=trip.id) }}">
                   View trip
                 </a>
+                {% if trip.archived %}
+                  <form method="post" action="{{ url_for('public.trip_restore', trip_id=trip.id) }}" class="mb-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                    <button class="btn btn-outline-success" type="submit" title="Restore trip">
+                      <i class="fa-solid fa-box-open"></i>
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('public.trip_archive', trip_id=trip.id) }}" class="mb-0">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                    <button class="btn btn-outline-secondary" type="submit" title="Archive trip">
+                      <i class="fa-solid fa-box-archive"></i>
+                    </button>
+                  </form>
+                {% endif %}
                 <form method="post" action="{{ url_for('public.trip_delete', trip_id=trip.id) }}" class="mb-0" onsubmit="return confirm('Delete this trip?');">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                   <button class="btn btn-outline-danger" type="submit" title="Delete trip">
@@ -179,7 +206,7 @@
             <li class="page-item {% if trip_page <= 1 %}disabled{% endif %}">
               <a
                 class="page-link"
-                href="{{ url_for('public.trips', page=trip_page - 1, q=trip_search or None, prep=prep_filter if prep_filter != 'all' else None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None) }}"
+                href="{{ url_for('public.trips', page=trip_page - 1, q=trip_search or None, prep=prep_filter if prep_filter != 'all' else None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None, visibility=visibility if visibility != 'active' else None) }}"
                 {% if trip_page <= 1 %}aria-disabled="true" tabindex="-1"{% endif %}
               >Previous</a>
             </li>
@@ -189,7 +216,7 @@
             <li class="page-item {% if trip_page >= total_pages %}disabled{% endif %}">
               <a
                 class="page-link"
-                href="{{ url_for('public.trips', page=trip_page + 1, q=trip_search or None, prep=prep_filter if prep_filter != 'all' else None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None) }}"
+                href="{{ url_for('public.trips', page=trip_page + 1, q=trip_search or None, prep=prep_filter if prep_filter != 'all' else None, date=date_filter if date_filter != 'all' else None, sort=trip_sort if trip_sort != 'newest' else None, visibility=visibility if visibility != 'active' else None) }}"
                 {% if trip_page >= total_pages %}aria-disabled="true" tabindex="-1"{% endif %}
               >Next</a>
             </li>
@@ -200,7 +227,7 @@
   {% else %}
     <div class="card shadow-sm">
       <div class="card-body">
-        {% if trip_search or prep_filter != "all" or date_filter != "all" %}
+        {% if trip_search or prep_filter != "all" or date_filter != "all" or visibility != "active" %}
           <p class="mb-0">No trips match the current search or filters.</p>
         {% else %}
           <p class="mb-0">No trips yet. Create one above, then add places from any place detail page.</p>
