@@ -138,6 +138,12 @@
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="next" value="{{ trip_return_url }}" />
       <span class="small text-body-secondary">Selected trips:</span>
+      <button class="btn btn-sm btn-outline-primary" type="button" id="select-all-trips-page">
+        <i class="fa-solid fa-square-check me-1"></i>Select all on this page
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="clear-trip-selection">
+        <i class="fa-solid fa-square me-1"></i>Clear selection
+      </button>
       <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="archive">
         <i class="fa-solid fa-box-archive me-1"></i>Archive selected
       </button>
@@ -266,4 +272,25 @@
       </div>
     </div>
   {% endif %}
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const currentPageTripCheckboxes = () =>
+        Array.from(document.querySelectorAll('input[name="trip_ids"][form="bulk-trip-form"]'));
+
+      const selectAllButton = document.getElementById("select-all-trips-page");
+      const clearButton = document.getElementById("clear-trip-selection");
+
+      selectAllButton?.addEventListener("click", () => {
+        currentPageTripCheckboxes().forEach((checkbox) => {
+          checkbox.checked = true;
+        });
+      });
+
+      clearButton?.addEventListener("click", () => {
+        currentPageTripCheckboxes().forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+      });
+    });
+  </script>
 {% endblock %}
