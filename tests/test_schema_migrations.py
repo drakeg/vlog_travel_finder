@@ -57,7 +57,7 @@ def test_upgrade_version_11_adds_checklist_without_losing_trip(tmp_path):
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 14
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 15
         tables = {
             row[0]
             for row in conn.execute(
@@ -143,7 +143,7 @@ def test_upgrade_version_12_adds_checklist_due_date_without_losing_items(tmp_pat
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 14
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 15
         columns = {
             row[1]
             for row in conn.execute(text("PRAGMA table_info(trip_checklist_item)"))
@@ -201,7 +201,7 @@ def test_upgrade_version_13_adds_trip_archived_without_losing_data(tmp_path):
     upgrade_sqlite_schema(engine)
 
     with engine.begin() as conn:
-        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 14
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 15
         columns = {
             row[1]
             for row in conn.execute(text("PRAGMA table_info(trip)"))
@@ -220,3 +220,73 @@ def test_upgrade_version_13_adds_trip_archived_without_losing_data(tmp_path):
             "2027-01-02",
             0,
         )
+
+
+def test_upgrade_version_14_adds_checklist_template_tables(tmp_path):
+    db_path = tmp_path / "migration-v14.sqlite"
+    engine = create_engine(f"sqlite:///{db_path}", future=True)
+
+    with engine.begin() as conn:
+        conn.connection.executescript(
+            """
+            CREATE TABLE user (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE site_setting (
+                key TEXT PRIMARY KEY,
+                value TEXT NULL
+            );
+
+            PRAGMA user_version = 14;
+            """
+        )
+
+    upgrade_sqlite_schema(engine)
+
+    with engine.begin() as conn:
+        assert int(conn.execute(text("PRAGMA user_version")).scalar_one()) == 15
+        tables = {
+            row[0]
+            for row in conn.execute(
+                text(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type = 'table' AND name IN "
+                    "('checklist_template', 'checklist_template_item')"
+                )
+            )
+        }
+        assert tables == {"checklist_template", "checklist_template_item"}
+
+        conn.execute(
+            text(
+                "INSERT INTO user (email, password_hash, role) "
+                "VALUES ('template-migration@example.com', 'hash', 'member')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO checklist_template (user_id, name) "
+                "VALUES (1, 'Migration Template')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO checklist_template_item (template_id, text, position) "
+                "VALUES (1, 'Pack camera', 1), (1, 'Charge batteries', 2)"
+            )
+        )
+        rows = conn.execute(
+            text(
+                "SELECT text, position FROM checklist_template_item "
+                "WHERE template_id = 1 ORDER BY position, id"
+            )
+        ).all()
+        assert [tuple(row) for row in rows] == [
+            ("Pack camera", 1),
+            ("Charge batteries", 2),
+        ]
