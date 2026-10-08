@@ -87,7 +87,7 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                 version = 0
             _set_user_version(conn, version)
 
-        latest_version = 14
+        latest_version = 15
         while version < latest_version:
             if version == 0:
                 conn.connection.executescript(
@@ -525,6 +525,38 @@ def upgrade_sqlite_schema(engine: Engine) -> None:
                     )
 
                 version = 14
+                _set_user_version(conn, version)
+                continue
+
+            if version == 14:
+                conn.connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS checklist_template (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_checklist_template_user_created_at
+                    ON checklist_template(user_id, created_at, id);
+
+                    CREATE TABLE IF NOT EXISTS checklist_template_item (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        template_id INTEGER NOT NULL,
+                        text TEXT NOT NULL,
+                        position INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (template_id) REFERENCES checklist_template (id) ON DELETE CASCADE
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_checklist_template_item_template_position
+                    ON checklist_template_item(template_id, position, id);
+                    """
+                )
+
+                version = 15
                 _set_user_version(conn, version)
                 continue
 
