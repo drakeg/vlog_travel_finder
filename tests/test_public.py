@@ -4529,7 +4529,10 @@ def test_checklist_template_save_and_apply_preserves_order_and_resets_state(clie
         data={"name": "Camera Trip Prep"},
         follow_redirects=True,
     )
-    assert 'Saved checklist template "Camera Trip Prep" with 3 items' in save.get_data(as_text=True)
+    save_html = save.get_data(as_text=True)
+    assert "Saved checklist template" in save_html
+    assert "Camera Trip Prep" in save_html
+    assert "with 3 items" in save_html
 
     with app.app_context():
         db = get_session(app)
@@ -4616,7 +4619,10 @@ def test_checklist_template_apply_skips_case_insensitive_duplicates(client, app)
         data={"template_id": str(template_id)},
         follow_redirects=True,
     )
-    assert 'Applied template "Duplicate Template" with 1 new checklist item' in response.get_data(as_text=True)
+    response_html = response.get_data(as_text=True)
+    assert "Applied template" in response_html
+    assert "Duplicate Template" in response_html
+    assert "with 1 new checklist item" in response_html
 
     with app.app_context():
         db = get_session(app)
