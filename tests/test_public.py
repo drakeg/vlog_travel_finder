@@ -4231,3 +4231,253 @@ def test_trips_selection_controls_only_render_when_current_page_has_trips(client
     body = client.get("/trips").get_data(as_text=True)
     assert 'id="select-all-trips-page"' not in body
     assert 'id="clear-trip-selection"' not in body
+
+
+def test_bulk_checklist_complete_and_incomplete_selected_items(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Bulk Checklist Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Bulk Checklist Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    for text_value, due_date in [
+        ("Pack camera", "2099-01-01"),
+        ("Charge batteries", "2099-01-02"),
+        ("Check weather", ""),
+    ]:
+        client.post(
+            f"/trips/{trip_id}/checklist",
+            data={"text": text_value, "due_date": due_date},
+            follow_redirects=True,
+        )
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert len(items) == 3
+        first_id, second_id, third_id = [item.id for item in items]
+        original_metadata = [
+            (item.id, item.text, item.due_date) for item in items
+        ]
+
+    complete = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={
+            "action": "complete",
+            "item_ids": [str(first_id), str(second_id)],
+        },
+        follow_redirects=True,
+    )
+    body = complete.get_data(as_text=True)
+    assert "Completed 2 checklist items" in body
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.completed for item in items] == [True, True, False]
+        assert [(item.id, item.text, item.due_date) for item in items] == original_metadata
+
+    reopen = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={
+            "action": "incomplete",
+            "item_ids": [str(second_id), str(third_id)],
+        },
+        follow_redirects=True,
+    )
+    assert "Reopened 1 checklist item" in reopen.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        )
+        assert [item.completed for item in items] == [True, False, False]
+        assert [(item.id, item.text, item.due_date) for item in items] == original_metadata
+
+
+def test_bulk_checklist_no_selection_and_controls_render(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist-controls@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Checklist Controls Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Checklist Controls Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(
+        f"/trips/{trip_id}/checklist",
+        data={"text": "One item"},
+        follow_redirects=True,
+    )
+
+    page = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert 'id="select-all-checklist-items"' in page
+    assert 'id="clear-checklist-selection"' in page
+    assert "Mark selected complete" in page
+    assert "Mark selected incomplete" in page
+    assert page.count('id="checklist-select-') == 1
+    assert "checklistItemCheckboxes" in page
+
+    response = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={"action": "complete"},
+        follow_redirects=True,
+    )
+    assert "Select at least one checklist item" in response.get_data(as_text=True)
+
+
+def test_bulk_checklist_ignores_invalid_and_cross_trip_item_ids(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist-scope@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Target Checklist Trip"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Other Checklist Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        target = db.query(Trip).filter_by(name="Target Checklist Trip").first()
+        other = db.query(Trip).filter_by(name="Other Checklist Trip").first()
+        assert target is not None and other is not None
+        target_id, other_id = target.id, other.id
+
+    client.post(f"/trips/{target_id}/checklist", data={"text": "Target item"})
+    client.post(f"/trips/{other_id}/checklist", data={"text": "Other item"})
+
+    with app.app_context():
+        db = get_session(app)
+        target_item = db.query(TripChecklistItem).filter_by(trip_id=target_id).first()
+        other_item = db.query(TripChecklistItem).filter_by(trip_id=other_id).first()
+        assert target_item is not None and other_item is not None
+        target_item_id, other_item_id = target_item.id, other_item.id
+
+    response = client.post(
+        f"/trips/{target_id}/checklist/bulk-complete",
+        data={
+            "action": "complete",
+            "item_ids": [str(target_item_id), str(other_item_id), "bad-id", "999999"],
+        },
+        follow_redirects=True,
+    )
+    assert "Completed 1 checklist item" in response.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripChecklistItem, target_item_id).completed is True
+        assert db.get(TripChecklistItem, other_item_id).completed is False
+
+
+def test_bulk_checklist_rejects_cross_user_trip(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist-owner-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Checklist Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owner A Checklist Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Owner A item"})
+    with app.app_context():
+        db = get_session(app)
+        item = db.query(TripChecklistItem).filter_by(trip_id=trip_id).first()
+        assert item is not None
+        item_id = item.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist-owner-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    response = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={"action": "complete", "item_ids": [str(item_id)]},
+    )
+    assert response.status_code == 404
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(TripChecklistItem, item_id).completed is False
+
+
+def test_bulk_checklist_mixed_state_only_counts_changes(client, app):
+    client.post(
+        "/register",
+        data={"email": "bulk-checklist-mixed@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Mixed Checklist Trip"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Mixed Checklist Trip").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Already done"})
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Needs done"})
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(TripChecklistItem)
+            .filter_by(trip_id=trip_id)
+            .order_by(TripChecklistItem.id.asc())
+            .all()
+        )
+        assert len(items) == 2
+        items[0].completed = True
+        db.commit()
+        first_id, second_id = items[0].id, items[1].id
+
+    response = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={
+            "action": "complete",
+            "item_ids": [str(first_id), str(second_id)],
+        },
+        follow_redirects=True,
+    )
+    assert "Completed 1 checklist item" in response.get_data(as_text=True)
+
+    second = client.post(
+        f"/trips/{trip_id}/checklist/bulk-complete",
+        data={
+            "action": "complete",
+            "item_ids": [str(first_id), str(second_id)],
+        },
+        follow_redirects=True,
+    )
+    assert "No selected checklist items were changed" in second.get_data(as_text=True)
