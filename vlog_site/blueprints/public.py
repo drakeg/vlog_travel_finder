@@ -851,6 +851,62 @@ def trip_checklist_import(trip_id: int):
 
 
 @public_bp.route(
+    "/trips/<int:trip_id>/checklist/bulk-complete",
+    methods=["POST"],
+)
+@login_required
+def trip_checklist_bulk_complete(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    action = clean_str(request.form.get("action"))
+    if action not in {"complete", "incomplete"}:
+        abort(404)
+
+    selected_ids: list[int] = []
+    for raw in request.form.getlist("item_ids"):
+        try:
+            item_id = int(raw)
+        except ValueError:
+            continue
+        if item_id not in selected_ids:
+            selected_ids.append(item_id)
+
+    if not selected_ids:
+        flash("Select at least one checklist item", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    selected_items = (
+        db.execute(
+            select(TripChecklistItem).where(
+                TripChecklistItem.trip_id == trip.id,
+                TripChecklistItem.id.in_(selected_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    target_completed = action == "complete"
+    changed = 0
+    for item in selected_items:
+        if item.completed != target_completed:
+            item.completed = target_completed
+            changed += 1
+
+    if changed:
+        db.commit()
+        verb = "Completed" if target_completed else "Reopened"
+        flash(
+            f"{verb} {changed} checklist item{'s' if changed != 1 else ''}",
+            "info",
+        )
+    else:
+        flash("No selected checklist items were changed", "info")
+
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route(
     "/trips/<int:trip_id>/checklist/<int:item_id>/due-date",
     methods=["POST"],
 )
