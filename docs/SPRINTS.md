@@ -857,23 +857,49 @@ Deferred:
 
 ### Sprint 33 — Current-page trip selection controls
 
-Status: In progress
+Status: Complete
 
 Planning issue: #216
 
-Current work:
+Shipped:
 
-- #217 — add Select all on this page and Clear selection controls;
-- limit selection changes to trip checkboxes rendered on the current page;
-- keep selections client-side until an existing bulk action is submitted;
-- preserve existing bulk archive/restore authorization and server behavior;
-- keep pagination, search, filters, sorting, visibility, and page size unchanged;
-- provide keyboard-accessible, clearly labeled controls;
-- add rendered-control and current-page wiring regression coverage.
+- Select all on this page control;
+- Clear selection control;
+- selection limited to current-page trip checkboxes;
+- client-side selection changes until an existing bulk action is submitted;
+- existing bulk archive/restore authorization preserved;
+- pagination, search, filters, sorting, visibility, and page size unchanged;
+- keyboard-accessible, clearly labeled controls;
+- rendered-control, current-page checkbox, and empty-state regression coverage.
 
-Out of scope:
+Deferred:
 
 - select all across every page;
 - persisted selections across pagination;
 - bulk delete;
 - new server-side bulk operations.
+
+### Sprint 34 — Bulk checklist completion
+
+Status: In progress
+
+Planning issue: #220
+
+Current work:
+
+- #221 — select multiple checklist items on an owned trip;
+- mark selected items complete in one action;
+- mark selected items incomplete in one action;
+- ignore invalid and cross-trip checklist IDs safely;
+- preserve checklist text, due dates, and order;
+- show clear no-selection and changed-count messages;
+- keep existing per-item toggle, delete, and due-date controls unchanged;
+- add Select all and Clear selection controls for checklist items;
+- add complete/incomplete, mixed-state, invalid-ID, ownership, no-selection, and metadata-preservation regression coverage.
+
+Out of scope:
+
+- bulk checklist delete;
+- cross-trip bulk actions;
+- checklist templates;
+- background reminders.
