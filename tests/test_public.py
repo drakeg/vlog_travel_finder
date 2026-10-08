@@ -4191,3 +4191,43 @@ def test_trips_page_size_remains_ownership_scoped(client, app):
     assert "Owner B Visible" in body
     assert "Owner A Hidden" not in body
     assert "1 trip" in body
+
+
+def test_trips_page_renders_current_page_selection_controls(client, app):
+    client.post(
+        "/register",
+        data={"email": "trip-select-page@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="trip-select-page@example.com").first()
+        assert user is not None
+        db.add_all(
+            [Trip(user_id=user.id, name=f"Select Page Trip {i:02d}") for i in range(1, 14)]
+        )
+        db.commit()
+
+    body = client.get("/trips?page_size=12").get_data(as_text=True)
+    assert 'id="select-all-trips-page"' in body
+    assert "Select all on this page" in body
+    assert 'id="clear-trip-selection"' in body
+    assert "Clear selection" in body
+    assert body.count('id="trip-select-') == 12
+    assert 'form="bulk-trip-form"' in body
+    assert "currentPageTripCheckboxes" in body
+    assert "checkbox.checked = true" in body
+    assert "checkbox.checked = false" in body
+
+
+def test_trips_selection_controls_only_render_when_current_page_has_trips(client):
+    client.post(
+        "/register",
+        data={"email": "trip-select-empty@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    body = client.get("/trips").get_data(as_text=True)
+    assert 'id="select-all-trips-page"' not in body
+    assert 'id="clear-trip-selection"' not in body

@@ -833,23 +833,47 @@ Deferred:
 
 ### Sprint 32 — Configurable Trips page size
 
-Status: In progress
+Status: Complete
 
 Planning issue: #212
 
-Current work:
+Shipped:
 
-- #213 — offer 12, 24, 48, and 96 trips per page;
-- keep 24 as the default;
-- fall back to 24 for invalid or unsupported values;
-- preserve page size across search, filters, sorting, visibility, pagination, and bulk archive/restore;
-- safely clamp the current page when page size changes;
-- keep ownership scoping unchanged;
-- add option, fallback, context, clamping, bulk-action, and ownership regression coverage.
+- selectable 12, 24, 48, and 96 trips-per-page options;
+- 24 retained as the default;
+- invalid/unsupported values fall back to 24;
+- page size preserved across search, preparation/date filters, sorting, visibility, and pagination;
+- page size preserved across bulk archive/restore return context;
+- safe page clamping after page-size changes;
+- ownership scoping preserved;
+- option, fallback, context, clamping, bulk-action, and ownership regression coverage.
 
-Out of scope:
+Deferred:
 
 - arbitrary custom page sizes;
 - infinite scrolling;
 - persisted per-user preference;
 - database-level pagination.
+
+### Sprint 33 — Current-page trip selection controls
+
+Status: In progress
+
+Planning issue: #216
+
+Current work:
+
+- #217 — add Select all on this page and Clear selection controls;
+- limit selection changes to trip checkboxes rendered on the current page;
+- keep selections client-side until an existing bulk action is submitted;
+- preserve existing bulk archive/restore authorization and server behavior;
+- keep pagination, search, filters, sorting, visibility, and page size unchanged;
+- provide keyboard-accessible, clearly labeled controls;
+- add rendered-control and current-page wiring regression coverage.
+
+Out of scope:
+
+- select all across every page;
+- persisted selections across pagination;
+- bulk delete;
+- new server-side bulk operations.
