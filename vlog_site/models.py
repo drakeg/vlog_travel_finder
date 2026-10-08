@@ -100,6 +100,35 @@ class TripChecklistItem(Base):
     )
 
 
+class ChecklistTemplate(Base):
+    __tablename__ = "checklist_template"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
+class ChecklistTemplateItem(Base):
+    __tablename__ = "checklist_template_item"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("checklist_template.id"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(String, nullable=False)
+    position: Mapped[int] = mapped_column(nullable=False, default=0)
+    created_at: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 class TripPlace(Base):
     __tablename__ = "trip_place"
 
