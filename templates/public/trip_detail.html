@@ -109,6 +109,47 @@
         </div>
       </form>
 
+      <form method="post" action="{{ url_for('public.trip_checklist_template_save', trip_id=trip.id) }}" class="row g-2 mb-3">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+        <div class="col-12 col-md">
+          <label class="visually-hidden" for="checklist-template-name">Template name</label>
+          <input
+            class="form-control"
+            id="checklist-template-name"
+            type="text"
+            name="name"
+            maxlength="200"
+            placeholder="Save this checklist as a template"
+            required
+          />
+        </div>
+        <div class="col-12 col-md-auto d-grid">
+          <button class="btn btn-outline-secondary" type="submit">
+            <i class="fa-solid fa-bookmark me-1"></i>Save as template
+          </button>
+        </div>
+      </form>
+
+      {% if checklist_templates %}
+        <form method="post" action="{{ url_for('public.trip_checklist_template_apply', trip_id=trip.id) }}" class="row g-2 mb-3">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+          <div class="col-12 col-md">
+            <label class="visually-hidden" for="checklist-template">Checklist template</label>
+            <select class="form-select" id="checklist-template" name="template_id" required>
+              <option value="">Apply checklist template…</option>
+              {% for template in checklist_templates %}
+                <option value="{{ template.id }}">{{ template.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-auto d-grid">
+            <button class="btn btn-outline-secondary" type="submit">
+              <i class="fa-solid fa-paste me-1"></i>Apply template
+            </button>
+          </div>
+        </form>
+      {% endif %}
+
       {% if other_trips %}
         <form method="post" action="{{ url_for('public.trip_checklist_import', trip_id=trip.id) }}" class="row g-2 mb-3">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />

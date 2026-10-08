@@ -881,25 +881,51 @@ Deferred:
 
 ### Sprint 34 — Bulk checklist completion
 
-Status: In progress
+Status: Complete
 
 Planning issue: #220
 
-Current work:
+Shipped:
 
-- #221 — select multiple checklist items on an owned trip;
-- mark selected items complete in one action;
-- mark selected items incomplete in one action;
-- ignore invalid and cross-trip checklist IDs safely;
-- preserve checklist text, due dates, and order;
-- show clear no-selection and changed-count messages;
-- keep existing per-item toggle, delete, and due-date controls unchanged;
-- add Select all and Clear selection controls for checklist items;
-- add complete/incomplete, mixed-state, invalid-ID, ownership, no-selection, and metadata-preservation regression coverage.
+- per-item checklist selection;
+- Select all and Clear selection controls;
+- bulk mark selected complete;
+- bulk mark selected incomplete;
+- current-owned-trip scoping for all selected items;
+- invalid/cross-trip IDs ignored safely;
+- checklist text, due dates, and order preserved;
+- clear no-selection and changed-count messages;
+- existing single-item toggle, due-date, and delete controls preserved;
+- complete/incomplete, mixed-state, invalid-ID, ownership, no-selection, and metadata-preservation regression coverage.
 
-Out of scope:
+Deferred:
 
 - bulk checklist delete;
 - cross-trip bulk actions;
 - checklist templates;
 - background reminders.
+
+### Sprint 35 — Reusable checklist templates
+
+Status: In progress
+
+Planning issue: #223
+
+Current work:
+
+- #224 — save an owned trip checklist as a named template;
+- apply an owned template to an owned trip;
+- preserve template item order;
+- reset applied completion state and due dates;
+- skip case-insensitive duplicate checklist text;
+- keep source template and source trip checklist state unchanged;
+- enforce template and trip ownership;
+- add non-destructive SQLite schema version 15;
+- add migration, save/apply, order, duplicate, reset-state, ownership, empty-template, and no-new-items regression coverage.
+
+Out of scope:
+
+- editing template items after creation;
+- sharing templates between users;
+- template due dates;
+- template categories/tags.
