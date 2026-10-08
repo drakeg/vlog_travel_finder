@@ -10,7 +10,7 @@ from sqlalchemy import case, func, or_, select, text
 
 from ..access_control import require_feature
 from ..db import get_session
-from ..models import BlogPost, Category, ContactMessage, Place, SavedPlace, Trip, TripChecklistItem, TripPlace
+from ..models import BlogPost, Category, ChecklistTemplate, ChecklistTemplateItem, ContactMessage, Place, SavedPlace, Trip, TripChecklistItem, TripPlace
 from ..services.mail_service import send_contact_email_if_configured
 from ..services.markdown_service import render_markdown
 from ..services.settings_service import get_setting
@@ -726,6 +726,15 @@ def trip_detail(trip_id: int) -> str:
     )
     checklist_completed = sum(1 for item in checklist_items if item.completed)
     user_id = int(session["user_id"])
+    checklist_templates = (
+        db.execute(
+            select(ChecklistTemplate)
+            .where(ChecklistTemplate.user_id == user_id)
+            .order_by(ChecklistTemplate.created_at.desc(), ChecklistTemplate.id.desc())
+        )
+        .scalars()
+        .all()
+    )
     other_trips = (
         db.execute(
             select(Trip)
@@ -746,6 +755,7 @@ def trip_detail(trip_id: int) -> str:
         checklist_items=checklist_items,
         checklist_completed=checklist_completed,
         checklist_remaining=len(checklist_items) - checklist_completed,
+        checklist_templates=checklist_templates,
         today_iso=date.today().isoformat(),
     )
 
@@ -774,6 +784,135 @@ def trip_checklist_add(trip_id: int):
         )
         db.commit()
         flash("Checklist item added", "info")
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route("/trips/<int:trip_id>/checklist/template/save", methods=["POST"])
+@login_required
+def trip_checklist_template_save(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    template_name = clean_str(request.form.get("name"))
+    if not template_name:
+        flash("Template name is required", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    source_items = (
+        db.execute(
+            select(TripChecklistItem)
+            .where(TripChecklistItem.trip_id == trip.id)
+            .order_by(
+                TripChecklistItem.created_at.asc(),
+                TripChecklistItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not source_items:
+        flash("Add checklist items before saving a template", "error")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    template = ChecklistTemplate(
+        user_id=int(session["user_id"]),
+        name=template_name,
+    )
+    db.add(template)
+    db.flush()
+
+    for position, item in enumerate(source_items, start=1):
+        db.add(
+            ChecklistTemplateItem(
+                template_id=template.id,
+                text=item.text,
+                position=position,
+            )
+        )
+
+    db.commit()
+    flash(
+        f'Saved checklist template "{template.name}" with {len(source_items)} item'
+        f'{"s" if len(source_items) != 1 else ""}',
+        "info",
+    )
+    return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+
+@public_bp.route("/trips/<int:trip_id>/checklist/template/apply", methods=["POST"])
+@login_required
+def trip_checklist_template_apply(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+
+    try:
+        template_id = int(request.form.get("template_id", ""))
+    except ValueError:
+        abort(404)
+
+    template = (
+        db.execute(
+            select(ChecklistTemplate).where(
+                ChecklistTemplate.id == template_id,
+                ChecklistTemplate.user_id == int(session["user_id"]),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if template is None:
+        abort(404)
+
+    template_items = (
+        db.execute(
+            select(ChecklistTemplateItem)
+            .where(ChecklistTemplateItem.template_id == template.id)
+            .order_by(
+                ChecklistTemplateItem.position.asc(),
+                ChecklistTemplateItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not template_items:
+        flash("Template has no checklist items", "info")
+        return redirect(url_for("public.trip_detail", trip_id=trip.id))
+
+    existing_text = {
+        item_text.casefold()
+        for item_text in db.execute(
+            select(TripChecklistItem.text).where(
+                TripChecklistItem.trip_id == trip.id
+            )
+        ).scalars().all()
+    }
+
+    added = 0
+    for item in template_items:
+        normalized = item.text.casefold()
+        if normalized in existing_text:
+            continue
+        db.add(
+            TripChecklistItem(
+                trip_id=trip.id,
+                text=item.text,
+                completed=False,
+                due_date=None,
+            )
+        )
+        existing_text.add(normalized)
+        added += 1
+
+    if added:
+        db.commit()
+        flash(
+            f'Applied template "{template.name}" with {added} new checklist item'
+            f'{"s" if added != 1 else ""}',
+            "info",
+        )
+    else:
+        flash("No new checklist items to add from this template", "info")
+
     return redirect(url_for("public.trip_detail", trip_id=trip.id))
 
 
