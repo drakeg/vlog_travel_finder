@@ -4214,7 +4214,7 @@ def test_trips_page_renders_current_page_selection_controls(client, app):
     assert "Select all on this page" in body
     assert 'id="clear-trip-selection"' in body
     assert "Clear selection" in body
-    assert body.count('name="trip_ids"') == 12
+    assert body.count('id="trip-select-') == 12
     assert 'form="bulk-trip-form"' in body
     assert "currentPageTripCheckboxes" in body
     assert "checkbox.checked = true" in body
