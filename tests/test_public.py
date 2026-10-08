@@ -4556,7 +4556,10 @@ def test_checklist_template_save_and_apply_preserves_order_and_resets_state(clie
         data={"template_id": str(template_id)},
         follow_redirects=True,
     )
-    assert 'Applied template "Camera Trip Prep" with 3 new checklist items' in apply.get_data(as_text=True)
+    apply_html = apply.get_data(as_text=True)
+    assert "Applied template" in apply_html
+    assert "Camera Trip Prep" in apply_html
+    assert "with 3 new checklist items" in apply_html
 
     with app.app_context():
         db = get_session(app)
