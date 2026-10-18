@@ -907,25 +907,50 @@ Deferred:
 
 ### Sprint 35 — Reusable checklist templates
 
-Status: In progress
+Status: Complete
 
 Planning issue: #223
 
-Current work:
+Shipped:
 
-- #224 — save an owned trip checklist as a named template;
-- apply an owned template to an owned trip;
-- preserve template item order;
-- reset applied completion state and due dates;
-- skip case-insensitive duplicate checklist text;
-- keep source template and source trip checklist state unchanged;
-- enforce template and trip ownership;
-- add non-destructive SQLite schema version 15;
-- add migration, save/apply, order, duplicate, reset-state, ownership, empty-template, and no-new-items regression coverage.
+- user-owned reusable checklist templates and ordered template items;
+- non-destructive SQLite schema version 15;
+- saving an owned trip checklist as a named template;
+- applying an owned template to an owned trip;
+- stable template item order;
+- applied items reset to incomplete with no due dates;
+- case-insensitive duplicate skipping;
+- source template and trip checklist state preserved;
+- ownership enforcement;
+- migration, save/apply, order, duplicate, reset-state, ownership, and empty/no-new-items regression coverage.
 
-Out of scope:
+Deferred:
 
 - editing template items after creation;
 - sharing templates between users;
 - template due dates;
 - template categories/tags.
+
+### Sprint 36 — Manage reusable checklist templates
+
+Status: In progress
+
+Planning issue: #230
+
+Current work:
+
+- list only templates owned by the signed-in member;
+- rename owned templates with validation and feedback;
+- add, edit, delete, and reorder template items;
+- delete owned templates after explicit confirmation;
+- preserve existing applied trip checklists when templates are changed or deleted;
+- prevent case-insensitive duplicate template items;
+- provide empty states and accessible controls;
+- enforce ownership and CSRF protection on every mutation;
+- add CRUD, order, duplicate, validation, ownership, CSRF, and trip-independence regression coverage.
+
+Out of scope:
+
+- sharing templates between users;
+- template due dates, reminders, and categories;
+- paid external APIs.
