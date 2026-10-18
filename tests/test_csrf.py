@@ -1,5 +1,5 @@
 from vlog_site.db import get_session
-from vlog_site.models import Trip
+from vlog_site.models import ChecklistTemplate, ChecklistTemplateItem, Trip
 
 
 def _csrf_token(client, path="/login"):
@@ -110,3 +110,38 @@ def test_csrf_header_token_is_accepted_for_unsafe_request(
         follow_redirects=False,
     )
     assert response.status_code == 302
+
+
+def test_csrf_protects_checklist_template_management(client, app, admin_password):
+    app.config["CSRF_ENABLED"] = True
+    _csrf_login_admin(client, admin_password)
+
+    with app.app_context():
+        db = get_session(app)
+        template = ChecklistTemplate(user_id=1, name="CSRF Template")
+        db.add(template)
+        db.flush()
+        db.add(ChecklistTemplateItem(template_id=template.id, text="CSRF Item", position=1))
+        db.commit()
+        template_id = template.id
+
+    page = client.get("/checklist-templates")
+    assert page.status_code == 200
+    assert 'name="_csrf_token"' in page.get_data(as_text=True)
+
+    missing = client.post(
+        f"/checklist-templates/{template_id}/rename",
+        data={"name": "Should Fail"},
+    )
+    assert missing.status_code == 400
+
+    with client.session_transaction() as sess:
+        token = sess.get("_csrf_token")
+    assert token
+
+    valid = client.post(
+        f"/checklist-templates/{template_id}/rename",
+        data={"name": "CSRF Renamed", "_csrf_token": token},
+        follow_redirects=False,
+    )
+    assert valid.status_code == 302
