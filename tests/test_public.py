@@ -4727,3 +4727,262 @@ def test_checklist_template_ownership_is_enforced(client, app):
 
     page = client.get(f"/trips/{trip_b_id}").get_data(as_text=True)
     assert "Private Template" not in page
+
+
+def test_checklist_template_management_crud_and_order(client, app):
+    client.post(
+        "/register",
+        data={"email": "template-manage@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Template Manage Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Template Manage Source").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Pack camera"})
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Charge batteries"})
+    client.post(
+        f"/trips/{trip_id}/checklist/template/save",
+        data={"name": "Original Template"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        template = db.query(ChecklistTemplate).filter_by(name="Original Template").first()
+        assert template is not None
+        template_id = template.id
+        items = (
+            db.query(ChecklistTemplateItem)
+            .filter_by(template_id=template_id)
+            .order_by(ChecklistTemplateItem.position.asc(), ChecklistTemplateItem.id.asc())
+            .all()
+        )
+        first_id, second_id = items[0].id, items[1].id
+
+    page = client.get("/checklist-templates").get_data(as_text=True)
+    assert "Original Template" in page
+    assert "Pack camera" in page
+    assert "Charge batteries" in page
+    assert "Delete template" in page
+
+    renamed = client.post(
+        f"/checklist-templates/{template_id}/rename",
+        data={"name": "Road Trip Prep"},
+        follow_redirects=True,
+    )
+    assert "Template renamed" in renamed.get_data(as_text=True)
+
+    added = client.post(
+        f"/checklist-templates/{template_id}/items",
+        data={"text": "Check weather"},
+        follow_redirects=True,
+    )
+    assert "Template item added" in added.get_data(as_text=True)
+
+    edited = client.post(
+        f"/checklist-templates/{template_id}/items/{second_id}/edit",
+        data={"text": "Charge all batteries"},
+        follow_redirects=True,
+    )
+    assert "Template item updated" in edited.get_data(as_text=True)
+
+    client.post(
+        f"/checklist-templates/{template_id}/items/{second_id}/move/up",
+        follow_redirects=True,
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        items = (
+            db.query(ChecklistTemplateItem)
+            .filter_by(template_id=template_id)
+            .order_by(ChecklistTemplateItem.position.asc(), ChecklistTemplateItem.id.asc())
+            .all()
+        )
+        assert [item.text for item in items] == [
+            "Charge all batteries",
+            "Pack camera",
+            "Check weather",
+        ]
+
+    deleted = client.post(
+        f"/checklist-templates/{template_id}/items/{first_id}/delete",
+        follow_redirects=True,
+    )
+    assert "Template item deleted" in deleted.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        template = db.get(ChecklistTemplate, template_id)
+        assert template is not None
+        assert template.name == "Road Trip Prep"
+        assert db.get(ChecklistTemplateItem, first_id) is None
+
+
+def test_checklist_template_management_rejects_duplicates_and_blank_values(client, app):
+    client.post(
+        "/register",
+        data={"email": "template-validate@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Template Validation Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Template Validation Source").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Pack camera"})
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Charge batteries"})
+    client.post(
+        f"/trips/{trip_id}/checklist/template/save",
+        data={"name": "Validation Template"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        template = db.query(ChecklistTemplate).filter_by(name="Validation Template").first()
+        assert template is not None
+        template_id = template.id
+        items = (
+            db.query(ChecklistTemplateItem)
+            .filter_by(template_id=template_id)
+            .order_by(ChecklistTemplateItem.position.asc(), ChecklistTemplateItem.id.asc())
+            .all()
+        )
+        second_id = items[1].id
+
+    blank_name = client.post(
+        f"/checklist-templates/{template_id}/rename",
+        data={"name": "   "},
+        follow_redirects=True,
+    )
+    assert "Template name is required" in blank_name.get_data(as_text=True)
+
+    duplicate_add = client.post(
+        f"/checklist-templates/{template_id}/items",
+        data={"text": "PACK CAMERA"},
+        follow_redirects=True,
+    )
+    assert "That template item already exists" in duplicate_add.get_data(as_text=True)
+
+    duplicate_edit = client.post(
+        f"/checklist-templates/{template_id}/items/{second_id}/edit",
+        data={"text": "pack camera"},
+        follow_redirects=True,
+    )
+    assert "That template item already exists" in duplicate_edit.get_data(as_text=True)
+
+
+def test_checklist_template_management_is_ownership_scoped(client, app):
+    client.post(
+        "/register",
+        data={"email": "template-manage-a@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Owner A Template Source"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        trip = db.query(Trip).filter_by(name="Owner A Template Source").first()
+        assert trip is not None
+        trip_id = trip.id
+
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Private template item"})
+    client.post(
+        f"/trips/{trip_id}/checklist/template/save",
+        data={"name": "Owner A Managed Template"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        template = db.query(ChecklistTemplate).filter_by(name="Owner A Managed Template").first()
+        assert template is not None
+        template_id = template.id
+        item = db.query(ChecklistTemplateItem).filter_by(template_id=template_id).first()
+        assert item is not None
+        item_id = item.id
+
+    client.post("/logout")
+    client.post(
+        "/register",
+        data={"email": "template-manage-b@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+
+    page = client.get("/checklist-templates").get_data(as_text=True)
+    assert "Owner A Managed Template" not in page
+    assert "No checklist templates yet." in page
+
+    assert client.post(
+        f"/checklist-templates/{template_id}/rename",
+        data={"name": "Stolen Rename"},
+    ).status_code == 404
+    assert client.post(
+        f"/checklist-templates/{template_id}/items",
+        data={"text": "Injected item"},
+    ).status_code == 404
+    assert client.post(
+        f"/checklist-templates/{template_id}/items/{item_id}/delete"
+    ).status_code == 404
+    assert client.post(
+        f"/checklist-templates/{template_id}/delete"
+    ).status_code == 404
+
+
+def test_deleting_checklist_template_does_not_change_applied_trip_checklist(client, app):
+    client.post(
+        "/register",
+        data={"email": "template-delete-independent@example.com", "password": "pw123456", "confirm": "pw123456"},
+        follow_redirects=True,
+    )
+    client.post("/trips", data={"name": "Delete Source"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Delete Target"}, follow_redirects=True)
+
+    with app.app_context():
+        db = get_session(app)
+        source = db.query(Trip).filter_by(name="Delete Source").first()
+        target = db.query(Trip).filter_by(name="Delete Target").first()
+        assert source is not None and target is not None
+        source_id, target_id = source.id, target.id
+
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Pack camera"})
+    client.post(f"/trips/{source_id}/checklist", data={"text": "Charge batteries"})
+    client.post(
+        f"/trips/{source_id}/checklist/template/save",
+        data={"name": "Delete Me Template"},
+    )
+
+    with app.app_context():
+        db = get_session(app)
+        template = db.query(ChecklistTemplate).filter_by(name="Delete Me Template").first()
+        assert template is not None
+        template_id = template.id
+
+    client.post(
+        f"/trips/{target_id}/checklist/template/apply",
+        data={"template_id": str(template_id)},
+    )
+
+    deleted = client.post(
+        f"/checklist-templates/{template_id}/delete",
+        follow_redirects=True,
+    )
+    assert "Checklist template deleted" in deleted.get_data(as_text=True)
+
+    with app.app_context():
+        db = get_session(app)
+        assert db.get(ChecklistTemplate, template_id) is None
+        texts = [
+            item.text
+            for item in db.query(TripChecklistItem)
+            .filter_by(trip_id=target_id)
+            .order_by(TripChecklistItem.created_at.asc(), TripChecklistItem.id.asc())
+            .all()
+        ]
+        assert texts == ["Pack camera", "Charge batteries"]
