@@ -40,6 +40,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Bulk trip actions include current-page Select all and Clear selection controls
   - Trip checklists support selecting multiple items and marking them complete or incomplete together
   - Trip checklists can be saved as reusable templates and applied to other owned trips
+  - Reusable checklist templates can be renamed and have their items added, edited, reordered, or deleted
   - Filtered trip lists can be sorted by recency, start date, name, or preparation urgency
   - Trips results are paginated 24 per page while preserving active search, filters, and sorting
   - Trips can be archived and restored, with archived trips hidden from the default view
