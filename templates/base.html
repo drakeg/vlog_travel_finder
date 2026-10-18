@@ -112,6 +112,9 @@
                 <a class="btn btn-outline-primary btn-sm btn-pill" href="{{ url_for('public.trips') }}">
                   <i class="fa-solid fa-route me-1"></i><span class="btn-label">Trips</span>
                 </a>
+                <a class="btn btn-outline-primary btn-sm btn-pill" href="{{ url_for('public.checklist_templates') }}">
+                  <i class="fa-solid fa-list-check me-1"></i><span class="btn-label">Templates</span>
+                </a>
                 <form method="post" action="{{ url_for('auth.logout') }}" class="mb-0">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                   <button type="submit" class="btn btn-outline-secondary btn-sm btn-pill">
