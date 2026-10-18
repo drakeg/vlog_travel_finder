@@ -22,6 +22,22 @@ from ..utils import clean_str
 public_bp = Blueprint("public", __name__)
 
 
+def _current_user_checklist_template_or_404(db, template_id: int) -> ChecklistTemplate:
+    template = (
+        db.execute(
+            select(ChecklistTemplate).where(
+                ChecklistTemplate.id == template_id,
+                ChecklistTemplate.user_id == int(session["user_id"]),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if template is None:
+        abort(404)
+    return template
+
+
 def _safe_local_next(value: str | None, fallback: str) -> str:
     if value and value.startswith("/") and not value.startswith("//"):
         return value
@@ -492,6 +508,229 @@ def _trip_itinerary_data(db, trip: Trip) -> tuple[list[dict], list[dict], list[d
         for planned_date in sorted(scheduled_by_date)
     ]
     return stops, day_groups, unscheduled_stops
+
+
+@public_bp.route("/checklist-templates")
+@login_required
+def checklist_templates() -> str:
+    db = get_session(current_app)
+    user_id = int(session["user_id"])
+    templates = (
+        db.execute(
+            select(ChecklistTemplate)
+            .where(ChecklistTemplate.user_id == user_id)
+            .order_by(ChecklistTemplate.created_at.desc(), ChecklistTemplate.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    template_ids = [template.id for template in templates]
+    items_by_template = {template_id: [] for template_id in template_ids}
+    if template_ids:
+        for item in (
+            db.execute(
+                select(ChecklistTemplateItem)
+                .where(ChecklistTemplateItem.template_id.in_(template_ids))
+                .order_by(
+                    ChecklistTemplateItem.template_id.asc(),
+                    ChecklistTemplateItem.position.asc(),
+                    ChecklistTemplateItem.id.asc(),
+                )
+            )
+            .scalars()
+            .all()
+        ):
+            items_by_template[item.template_id].append(item)
+
+    return render_template(
+        "public/checklist_templates.html",
+        templates=templates,
+        items_by_template=items_by_template,
+    )
+
+
+@public_bp.route("/checklist-templates/<int:template_id>/rename", methods=["POST"])
+@login_required
+def checklist_template_rename(template_id: int):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    name = clean_str(request.form.get("name"))
+    if not name:
+        flash("Template name is required", "error")
+    else:
+        template.name = name
+        db.commit()
+        flash("Template renamed", "info")
+    return redirect(url_for("public.checklist_templates"))
+
+
+@public_bp.route("/checklist-templates/<int:template_id>/items", methods=["POST"])
+@login_required
+def checklist_template_item_add(template_id: int):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    item_text = clean_str(request.form.get("text"))
+    if not item_text:
+        flash("Template item is required", "error")
+        return redirect(url_for("public.checklist_templates"))
+
+    existing = {
+        value.casefold()
+        for value in db.execute(
+            select(ChecklistTemplateItem.text).where(
+                ChecklistTemplateItem.template_id == template.id
+            )
+        ).scalars().all()
+    }
+    if item_text.casefold() in existing:
+        flash("That template item already exists", "error")
+        return redirect(url_for("public.checklist_templates"))
+
+    max_position = db.execute(
+        select(func.max(ChecklistTemplateItem.position)).where(
+            ChecklistTemplateItem.template_id == template.id
+        )
+    ).scalar_one()
+    db.add(
+        ChecklistTemplateItem(
+            template_id=template.id,
+            text=item_text,
+            position=int(max_position or 0) + 1,
+        )
+    )
+    db.commit()
+    flash("Template item added", "info")
+    return redirect(url_for("public.checklist_templates"))
+
+
+@public_bp.route(
+    "/checklist-templates/<int:template_id>/items/<int:item_id>/edit",
+    methods=["POST"],
+)
+@login_required
+def checklist_template_item_edit(template_id: int, item_id: int):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    item = (
+        db.execute(
+            select(ChecklistTemplateItem).where(
+                ChecklistTemplateItem.id == item_id,
+                ChecklistTemplateItem.template_id == template.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if item is None:
+        abort(404)
+
+    item_text = clean_str(request.form.get("text"))
+    if not item_text:
+        flash("Template item is required", "error")
+        return redirect(url_for("public.checklist_templates"))
+
+    duplicate = (
+        db.execute(
+            select(ChecklistTemplateItem).where(
+                ChecklistTemplateItem.template_id == template.id,
+                ChecklistTemplateItem.id != item.id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if any(other.text.casefold() == item_text.casefold() for other in duplicate):
+        flash("That template item already exists", "error")
+        return redirect(url_for("public.checklist_templates"))
+
+    item.text = item_text
+    db.commit()
+    flash("Template item updated", "info")
+    return redirect(url_for("public.checklist_templates"))
+
+
+@public_bp.route(
+    "/checklist-templates/<int:template_id>/items/<int:item_id>/delete",
+    methods=["POST"],
+)
+@login_required
+def checklist_template_item_delete(template_id: int, item_id: int):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    item = (
+        db.execute(
+            select(ChecklistTemplateItem).where(
+                ChecklistTemplateItem.id == item_id,
+                ChecklistTemplateItem.template_id == template.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if item is None:
+        abort(404)
+    db.delete(item)
+    db.commit()
+    flash("Template item deleted", "info")
+    return redirect(url_for("public.checklist_templates"))
+
+
+@public_bp.route(
+    "/checklist-templates/<int:template_id>/items/<int:item_id>/move/<direction>",
+    methods=["POST"],
+)
+@login_required
+def checklist_template_item_move(template_id: int, item_id: int, direction: str):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    if direction not in {"up", "down"}:
+        abort(404)
+
+    items = (
+        db.execute(
+            select(ChecklistTemplateItem)
+            .where(ChecklistTemplateItem.template_id == template.id)
+            .order_by(
+                ChecklistTemplateItem.position.asc(),
+                ChecklistTemplateItem.id.asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    current_index = next((i for i, item in enumerate(items) if item.id == item_id), None)
+    if current_index is None:
+        abort(404)
+    target_index = current_index - 1 if direction == "up" else current_index + 1
+    if 0 <= target_index < len(items):
+        current = items[current_index]
+        target = items[target_index]
+        current.position, target.position = target.position, current.position
+        db.commit()
+
+    return redirect(url_for("public.checklist_templates"))
+
+
+@public_bp.route("/checklist-templates/<int:template_id>/delete", methods=["POST"])
+@login_required
+def checklist_template_delete(template_id: int):
+    db = get_session(current_app)
+    template = _current_user_checklist_template_or_404(db, template_id)
+    items = (
+        db.execute(
+            select(ChecklistTemplateItem).where(
+                ChecklistTemplateItem.template_id == template.id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for item in items:
+        db.delete(item)
+    db.delete(template)
+    db.commit()
+    flash("Checklist template deleted", "info")
+    return redirect(url_for("public.checklist_templates"))
 
 
 @public_bp.route("/trips", methods=["GET", "POST"])
