@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Checklist Templates - {{ site_name }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="mb-1">Checklist Templates</h1>
+      <div class="text-muted">Maintain reusable trip-preparation checklists.</div>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('public.trips') }}">
+      <i class="fa-solid fa-route me-1"></i>Back to trips
+    </a>
+  </div>
+
+  {% if templates %}
+    <div class="d-grid gap-4">
+      {% for template in templates %}
+        {% set items = items_by_template.get(template.id, []) %}
+        <section class="card shadow-sm" aria-labelledby="template-title-{{ template.id }}">
+          <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between mb-3">
+              <form method="post" action="{{ url_for('public.checklist_template_rename', template_id=template.id) }}" class="d-flex flex-column flex-sm-row gap-2 flex-grow-1">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                <label class="visually-hidden" for="template-name-{{ template.id }}">Template name</label>
+                <input class="form-control" id="template-name-{{ template.id }}" name="name" value="{{ template.name }}" maxlength="200" required />
+                <button class="btn btn-outline-primary text-nowrap" type="submit">Rename</button>
+              </form>
+              <form method="post" action="{{ url_for('public.checklist_template_delete', template_id=template.id) }}" class="mb-0" onsubmit="return confirm('Delete this checklist template? Existing trip checklists will not be changed.');">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                <button class="btn btn-outline-danger" type="submit">
+                  <i class="fa-solid fa-trash me-1"></i>Delete template
+                </button>
+              </form>
+            </div>
+
+            <h2 class="h6" id="template-title-{{ template.id }}">{{ template.name }}</h2>
+
+            <form method="post" action="{{ url_for('public.checklist_template_item_add', template_id=template.id) }}" class="row g-2 mb-3">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+              <div class="col-12 col-md">
+                <label class="visually-hidden" for="new-template-item-{{ template.id }}">New template item</label>
+                <input class="form-control" id="new-template-item-{{ template.id }}" name="text" maxlength="500" placeholder="Add a template item" required />
+              </div>
+              <div class="col-12 col-md-auto d-grid">
+                <button class="btn btn-outline-secondary" type="submit">
+                  <i class="fa-solid fa-plus me-1"></i>Add item
+                </button>
+              </div>
+            </form>
+
+            {% if items %}
+              <div class="list-group">
+                {% for item in items %}
+                  <div class="list-group-item">
+                    <div class="d-flex flex-column flex-xl-row gap-2 align-items-xl-center">
+                      <form method="post" action="{{ url_for('public.checklist_template_item_edit', template_id=template.id, item_id=item.id) }}" class="d-flex gap-2 flex-grow-1 mb-0">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                        <label class="visually-hidden" for="template-item-{{ item.id }}">Template item</label>
+                        <input class="form-control form-control-sm" id="template-item-{{ item.id }}" name="text" value="{{ item.text }}" maxlength="500" required />
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+                      </form>
+                      <div class="d-flex gap-2">
+                        <form method="post" action="{{ url_for('public.checklist_template_item_move', template_id=template.id, item_id=item.id, direction='up') }}" class="mb-0">
+                          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                          <button class="btn btn-sm btn-outline-secondary" type="submit" {% if loop.first %}disabled{% endif %} aria-label="Move {{ item.text }} up">
+                            <i class="fa-solid fa-arrow-up"></i>
+                          </button>
+                        </form>
+                        <form method="post" action="{{ url_for('public.checklist_template_item_move', template_id=template.id, item_id=item.id, direction='down') }}" class="mb-0">
+                          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                          <button class="btn btn-sm btn-outline-secondary" type="submit" {% if loop.last %}disabled{% endif %} aria-label="Move {{ item.text }} down">
+                            <i class="fa-solid fa-arrow-down"></i>
+                          </button>
+                        </form>
+                        <form method="post" action="{{ url_for('public.checklist_template_item_delete', template_id=template.id, item_id=item.id) }}" class="mb-0">
+                          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                          <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Delete {{ item.text }}">
+                            <i class="fa-solid fa-trash"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-body-secondary small">This template has no items yet.</div>
+            {% endif %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <p class="mb-2">No checklist templates yet.</p>
+        <p class="text-body-secondary mb-0">Open a trip with checklist items and use “Save as template” to create one.</p>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
