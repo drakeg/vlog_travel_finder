@@ -933,23 +933,23 @@ Deferred:
 
 ### Sprint 36 — Manage reusable checklist templates
 
-Status: In progress
+Status: Complete
 
 Planning issue: #230
 
-Current work:
+Shipped:
 
-- list only templates owned by the signed-in member;
-- rename owned templates with validation and feedback;
+- owner-only checklist template management page;
+- template listing, renaming, and deletion with confirmation;
 - add, edit, delete, and reorder template items;
-- delete owned templates after explicit confirmation;
-- preserve existing applied trip checklists when templates are changed or deleted;
-- prevent case-insensitive duplicate template items;
-- provide empty states and accessible controls;
-- enforce ownership and CSRF protection on every mutation;
-- add CRUD, order, duplicate, validation, ownership, CSRF, and trip-independence regression coverage.
+- case-insensitive duplicate prevention and validation feedback;
+- existing applied trip checklists remain independent of template changes;
+- ownership and CSRF enforcement on management actions;
+- CRUD, ordering, duplicate, validation, ownership, CSRF, empty-state, and trip-independence regression tests.
 
-Out of scope:
+Merged PR: #233
+
+Deferred:
 
 - sharing templates between users;
 - template due dates, reminders, and categories;
