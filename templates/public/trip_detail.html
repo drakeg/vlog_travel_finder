@@ -186,6 +186,9 @@
           <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="incomplete">
             <i class="fa-solid fa-rotate-left me-1"></i>Mark selected incomplete
           </button>
+          <button class="btn btn-sm btn-outline-danger" type="submit" id="bulk-delete-checklist-items" formaction="{{ url_for('public.trip_checklist_bulk_delete', trip_id=trip.id) }}" name="confirm_delete" value="yes">
+            <i class="fa-solid fa-trash me-1"></i>Delete selected
+          </button>
         </form>
         <div class="list-group">
           {% for item in checklist_items %}
@@ -257,6 +260,13 @@
     document.addEventListener("DOMContentLoaded", () => {
       const checklistItemCheckboxes = () =>
         Array.from(document.querySelectorAll('input[name="item_ids"][form="bulk-checklist-form"]'));
+
+      document.getElementById("bulk-delete-checklist-items")?.addEventListener("click", (event) => {
+        const count = checklistItemCheckboxes().filter((checkbox) => checkbox.checked).length;
+        if (count && !window.confirm(`Permanently delete ${count} selected checklist item(s)?`)) {
+          event.preventDefault();
+        }
+      });
 
       document.getElementById("select-all-checklist-items")?.addEventListener("click", () => {
         checklistItemCheckboxes().forEach((checkbox) => {

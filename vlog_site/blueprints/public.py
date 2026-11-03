@@ -1285,6 +1285,51 @@ def trip_checklist_bulk_complete(trip_id: int):
 
 
 @public_bp.route(
+    "/trips/<int:trip_id>/checklist/bulk-delete",
+    methods=["POST"],
+)
+@login_required
+def trip_checklist_bulk_delete(trip_id: int):
+    db = get_session(current_app)
+    trip = _current_user_trip_or_404(db, trip_id)
+    destination = url_for("public.trip_detail", trip_id=trip.id)
+    if request.form.get("confirm_delete") != "yes":
+        flash("Confirm deletion before removing checklist items", "error")
+        return redirect(destination)
+
+    selected_ids: set[int] = set()
+    for raw in request.form.getlist("item_ids"):
+        try:
+            selected_ids.add(int(raw))
+        except (TypeError, ValueError):
+            continue
+
+    if not selected_ids:
+        flash("Select at least one checklist item", "error")
+        return redirect(destination)
+
+    selected_items = (
+        db.execute(
+            select(TripChecklistItem).where(
+                TripChecklistItem.trip_id == trip.id,
+                TripChecklistItem.id.in_(selected_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for item in selected_items:
+        db.delete(item)
+    if selected_items:
+        db.commit()
+        count = len(selected_items)
+        flash(f"Deleted {count} checklist item{'s' if count != 1 else ''}", "info")
+    else:
+        flash("No selected checklist items were deleted", "info")
+    return redirect(destination)
+
+
+@public_bp.route(
     "/trips/<int:trip_id>/checklist/<int:item_id>/due-date",
     methods=["POST"],
 )

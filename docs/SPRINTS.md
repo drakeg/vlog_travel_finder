@@ -954,3 +954,27 @@ Deferred:
 - sharing templates between users;
 - template due dates, reminders, and categories;
 - paid external APIs.
+
+
+### Sprint 37 — Bulk checklist cleanup
+
+Status: In progress
+
+Planning issue: #241
+
+Implementation PR: pending review
+
+Scope:
+
+- bulk delete selected checklist items on an owned trip with explicit browser confirmation and server-side confirmation marker;
+- scope deletion to the current user's trip, ignoring invalid, duplicate, and cross-trip IDs;
+- preserve all unselected checklist item data and order;
+- show empty-selection and changed-count feedback;
+- retain existing bulk completion and single-item controls;
+- regression tests for confirmation, selection, metadata preservation, invalid IDs, and ownership.
+
+Deferred:
+
+- cross-trip deletion;
+- undo/trash and retention;
+- background jobs.

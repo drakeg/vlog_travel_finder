@@ -4986,3 +4986,61 @@ def test_deleting_checklist_template_does_not_change_applied_trip_checklist(clie
             .all()
         ]
         assert texts == ["Pack camera", "Charge batteries"]
+
+
+def test_bulk_checklist_delete_requires_confirmation_and_preserves_other_items(client, app):
+    client.post("/register", data={"email": "bulk-delete@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Bulk Delete Trip"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        trip_id = db.query(Trip).filter_by(name="Bulk Delete Trip").first().id
+    for name, due in [("Remove A", "2099-01-01"), ("Keep", "2099-01-02"), ("Remove B", "")]:
+        client.post(f"/trips/{trip_id}/checklist", data={"text": name, "due_date": due})
+    with app.app_context():
+        db = get_session(app)
+        items = db.query(TripChecklistItem).filter_by(trip_id=trip_id).order_by(TripChecklistItem.id).all()
+        ids = [item.id for item in items]
+        kept = (items[1].text, items[1].due_date, items[1].completed)
+    url = f"/trips/{trip_id}/checklist/bulk-delete"
+    unconfirmed = client.post(url, data={"item_ids": [str(ids[0]), str(ids[2])] }, follow_redirects=True)
+    assert "Confirm deletion" in unconfirmed.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(TripChecklistItem).filter_by(trip_id=trip_id).count() == 3
+    response = client.post(url, data={"confirm_delete": "yes", "item_ids": [str(ids[0]), str(ids[2]), str(ids[0]), "bad-id", "999999"]}, follow_redirects=True)
+    assert "Deleted 2 checklist items" in response.get_data(as_text=True)
+    with app.app_context():
+        remaining = get_session(app).query(TripChecklistItem).filter_by(trip_id=trip_id).all()
+        assert len(remaining) == 1
+        assert remaining[0].id == ids[1]
+        assert (remaining[0].text, remaining[0].due_date, remaining[0].completed) == kept
+    page = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert 'id="bulk-delete-checklist-items"' in page
+    assert "Permanently delete" in page
+    assert "bulk-delete" in page
+
+
+def test_bulk_checklist_delete_is_trip_scoped_and_requires_selection(client, app):
+    client.post("/register", data={"email": "bulk-delete-scope@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    for name in ["Bulk Delete Target", "Bulk Delete Other"]:
+        client.post("/trips", data={"name": name}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        target_id = db.query(Trip).filter_by(name="Bulk Delete Target").first().id
+        other_id = db.query(Trip).filter_by(name="Bulk Delete Other").first().id
+    for trip_id in [target_id, other_id]:
+        client.post(f"/trips/{trip_id}/checklist", data={"text": "Item"})
+    with app.app_context():
+        db = get_session(app)
+        other_item_id = db.query(TripChecklistItem).filter_by(trip_id=other_id).first().id
+    url = f"/trips/{target_id}/checklist/bulk-delete"
+    response = client.post(url, data={"confirm_delete": "yes"}, follow_redirects=True)
+    assert "Select at least one" in response.get_data(as_text=True)
+    response = client.post(url, data={"confirm_delete": "yes", "item_ids": [str(other_item_id)]}, follow_redirects=True)
+    assert "No selected checklist items were deleted" in response.get_data(as_text=True)
+    with app.app_context():
+        db = get_session(app)
+        assert db.query(TripChecklistItem).filter_by(trip_id=target_id).count() == 1
+        assert db.get(TripChecklistItem, other_item_id) is not None
+    client.post("/logout")
+    client.post("/register", data={"email": "bulk-delete-stranger@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    assert client.post(url, data={"confirm_delete": "yes", "item_ids": [str(other_item_id)]}).status_code == 404
