@@ -958,13 +958,13 @@ Deferred:
 
 ### Sprint 37 — Bulk checklist cleanup
 
-Status: In progress
+Status: Complete
 
 Planning issue: #241
 
-Implementation PR: pending review
+Merged implementation PR: #246 (Tests workflow passed)
 
-Scope:
+Shipped:
 
 - bulk delete selected checklist items on an owned trip with explicit browser confirmation and server-side confirmation marker;
 - scope deletion to the current user's trip, ignoring invalid, duplicate, and cross-trip IDs;
