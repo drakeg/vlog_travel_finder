@@ -978,3 +978,23 @@ Deferred:
 - cross-trip deletion;
 - undo/trash and retention;
 - background jobs.
+
+
+### Sprint 38 — Checklist bulk delete usability and safety
+
+Status: In progress
+
+Planning issue: #248
+
+Scope:
+
+- announce selected checklist item counts with an accessible live region;
+- update the count when items are selected, cleared, or toggled;
+- prevent empty-selection submissions and provide a clear irreversible-action confirmation;
+- retain server-side confirmation, CSRF, and ownership checks;
+- add regression coverage for confirmation and selection controls.
+
+Deferred:
+
+- undo/trash;
+- cross-trip bulk operations.
