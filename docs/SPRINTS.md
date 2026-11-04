@@ -982,11 +982,13 @@ Deferred:
 
 ### Sprint 38 — Checklist bulk delete usability and safety
 
-Status: In progress
+Status: Complete
 
 Planning issue: #248
 
-Scope:
+Merged implementation PR: #252 (Tests workflow passed)
+
+Shipped:
 
 - announce selected checklist item counts with an accessible live region;
 - update the count when items are selected, cleared, or toggled;
