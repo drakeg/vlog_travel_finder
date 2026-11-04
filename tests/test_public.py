@@ -5044,3 +5044,22 @@ def test_bulk_checklist_delete_is_trip_scoped_and_requires_selection(client, app
     client.post("/logout")
     client.post("/register", data={"email": "bulk-delete-stranger@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
     assert client.post(url, data={"confirm_delete": "yes", "item_ids": [str(other_item_id)]}).status_code == 404
+
+
+def test_bulk_delete_selection_status_and_cancel_affordance(client, app):
+    client.post("/register", data={"email": "bulk-delete-a11y@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    client.post("/trips", data={"name": "Checklist A11y Trip"}, follow_redirects=True)
+    with app.app_context():
+        trip_id = get_session(app).query(Trip).filter_by(name="Checklist A11y Trip").first().id
+    empty = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert 'id="bulk-delete-checklist-items"' not in empty
+    client.post(f"/trips/{trip_id}/checklist", data={"text": "Keep me"})
+    page = client.get(f"/trips/{trip_id}").get_data(as_text=True)
+    assert 'id="checklist-selection-count"' in page
+    assert 'aria-live="polite"' in page
+    assert "selectedChecklistCount()" in page
+    assert "updateChecklistSelectionCount()" in page
+    assert "event.preventDefault()" in page
+    assert "This cannot be undone." in page
+    assert 'name="confirm_delete" value="yes"' in page
+    assert 'name="_csrf_token"' in page
