@@ -549,6 +549,45 @@ def checklist_templates() -> str:
     )
 
 
+@public_bp.route("/checklist-templates/<int:template_id>/duplicate", methods=["POST"])
+@login_required
+def checklist_template_duplicate(template_id: int):
+    db = get_session(current_app)
+    source = _current_user_checklist_template_or_404(db, template_id)
+    destination = url_for("public.checklist_templates")
+    name = clean_str(request.form.get("name"))
+    if not name:
+        flash("Template name is required", "error")
+        return redirect(destination)
+
+    existing_names = db.execute(
+        select(ChecklistTemplate.name).where(
+            ChecklistTemplate.user_id == int(session["user_id"])
+        )
+    ).scalars().all()
+    if name.casefold() in {existing.casefold() for existing in existing_names}:
+        flash("A checklist template with that name already exists", "error")
+        return redirect(destination)
+
+    source_items = db.execute(
+        select(ChecklistTemplateItem)
+        .where(ChecklistTemplateItem.template_id == source.id)
+        .order_by(ChecklistTemplateItem.position.asc(), ChecklistTemplateItem.id.asc())
+    ).scalars().all()
+    copy = ChecklistTemplate(user_id=int(session["user_id"]), name=name)
+    db.add(copy)
+    db.flush()
+    for position, item in enumerate(source_items, start=1):
+        db.add(ChecklistTemplateItem(template_id=copy.id, text=item.text, position=position))
+    db.commit()
+    count = len(source_items)
+    flash(
+        f"Template duplicated with {count} item{'s' if count != 1 else ''}",
+        "info",
+    )
+    return redirect(destination)
+
+
 @public_bp.route("/checklist-templates/<int:template_id>/rename", methods=["POST"])
 @login_required
 def checklist_template_rename(template_id: int):

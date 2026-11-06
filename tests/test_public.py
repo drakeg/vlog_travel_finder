@@ -5063,3 +5063,54 @@ def test_bulk_delete_selection_status_and_cancel_affordance(client, app):
     assert "This cannot be undone." in page
     assert 'name="confirm_delete" value="yes"' in page
     assert 'name="_csrf_token"' in page
+
+
+def test_checklist_template_duplicate_copies_order_and_is_independent(client, app):
+    client.post("/register", data={"email": "duplicate-template@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="duplicate-template@example.com").first()
+        original = ChecklistTemplate(user_id=user.id, name="Camera Prep")
+        db.add(original)
+        db.flush()
+        db.add_all([
+            ChecklistTemplateItem(template_id=original.id, text="Charge batteries", position=2),
+            ChecklistTemplateItem(template_id=original.id, text="Pack camera", position=1),
+        ])
+        db.commit()
+        original_id = original.id
+    page = client.get("/checklist-templates").get_data(as_text=True)
+    assert "duplicate-template-name-" in page
+    result = client.post(f"/checklist-templates/{original_id}/duplicate", data={"name": "Camera Prep Copy"}, follow_redirects=True)
+    assert "Template duplicated with 2 items" in result.get_data(as_text=True)
+    with app.app_context():
+        db = get_session(app)
+        copied = db.query(ChecklistTemplate).filter_by(name="Camera Prep Copy").first()
+        assert copied is not None and copied.id != original_id
+        source_items = db.query(ChecklistTemplateItem).filter_by(template_id=original_id).order_by(ChecklistTemplateItem.position).all()
+        copied_items = db.query(ChecklistTemplateItem).filter_by(template_id=copied.id).order_by(ChecklistTemplateItem.position).all()
+        assert [item.text for item in copied_items] == ["Pack camera", "Charge batteries"]
+        assert [item.position for item in copied_items] == [1, 2]
+        assert set(item.id for item in copied_items).isdisjoint(item.id for item in source_items)
+        copied_items[0].text = "Changed copy"
+        db.commit()
+        assert db.query(ChecklistTemplateItem).filter_by(template_id=original_id).order_by(ChecklistTemplateItem.position).first().text == "Pack camera"
+
+
+def test_checklist_template_duplicate_validates_name_and_owner(client, app):
+    client.post("/register", data={"email": "duplicate-owner@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    with app.app_context():
+        db = get_session(app)
+        user = db.query(User).filter_by(email="duplicate-owner@example.com").first()
+        original = ChecklistTemplate(user_id=user.id, name="Empty Template")
+        db.add(original)
+        db.commit()
+        original_id = original.id
+    endpoint = f"/checklist-templates/{original_id}/duplicate"
+    assert "Template name is required" in client.post(endpoint, data={"name": " "}, follow_redirects=True).get_data(as_text=True)
+    assert "already exists" in client.post(endpoint, data={"name": "empty template"}, follow_redirects=True).get_data(as_text=True)
+    response = client.post(endpoint, data={"name": "Empty Template Copy"}, follow_redirects=True)
+    assert "Template duplicated with 0 items" in response.get_data(as_text=True)
+    client.post("/logout")
+    client.post("/register", data={"email": "duplicate-other@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    assert client.post(endpoint, data={"name": "Stolen Template"}).status_code == 404

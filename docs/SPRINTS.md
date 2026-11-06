@@ -1000,3 +1000,18 @@ Deferred:
 
 - undo/trash;
 - cross-trip bulk operations.
+
+
+### Sprint 39 — Checklist template duplication
+
+Status: In progress
+
+Planning issue: #254
+
+Scope:
+
+- duplicate an owned checklist template under a distinct, nonempty, case-insensitive unique name;
+- copy item text and order into new records, including empty templates;
+- preserve the original and previously applied trip checklists;
+- enforce login, owner scoping, and existing CSRF protection;
+- test independent copies, name validation, ownership, and empty templates.
