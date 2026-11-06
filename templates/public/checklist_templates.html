@@ -26,6 +26,14 @@
                 <input class="form-control" id="template-name-{{ template.id }}" name="name" value="{{ template.name }}" maxlength="200" required />
                 <button class="btn btn-outline-primary text-nowrap" type="submit">Rename</button>
               </form>
+              <form method="post" action="{{ url_for('public.checklist_template_duplicate', template_id=template.id) }}" class="d-flex flex-column flex-sm-row gap-2">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+                <label class="visually-hidden" for="duplicate-template-name-{{ template.id }}">New template name</label>
+                <input class="form-control" id="duplicate-template-name-{{ template.id }}" name="name" value="{{ template.name }} Copy" maxlength="200" required />
+                <button class="btn btn-outline-secondary text-nowrap" type="submit">
+                  <i class="fa-solid fa-copy me-1"></i>Duplicate
+                </button>
+              </form>
               <form method="post" action="{{ url_for('public.checklist_template_delete', template_id=template.id) }}" class="mb-0" onsubmit="return confirm('Delete this checklist template? Existing trip checklists will not be changed.');">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
                 <button class="btn btn-outline-danger" type="submit">
