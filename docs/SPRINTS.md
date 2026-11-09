@@ -1017,3 +1017,18 @@ Shipped:
 - preserve the original and previously applied trip checklists;
 - enforce login, owner scoping, and existing CSRF protection;
 - test independent copies, name validation, ownership, and empty templates.
+
+
+### Sprint 40 — Checklist template JSON import/export
+
+Status: In progress
+
+Planning issue: #259
+
+Scope:
+
+- export only the current user's templates as versioned JSON with ordered text items;
+- import validated version 1 JSON, skipping case-insensitive duplicate names;
+- reject invalid payloads atomically with 1 MB, 100-template, and 500-item-per-template limits;
+- preserve ownership and existing CSRF protections;
+- test round trips, isolation, duplicate handling, and invalid payloads.
