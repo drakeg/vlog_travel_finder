@@ -5114,3 +5114,46 @@ def test_checklist_template_duplicate_validates_name_and_owner(client, app):
     client.post("/logout")
     client.post("/register", data={"email": "duplicate-other@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
     assert client.post(endpoint, data={"name": "Stolen Template"}).status_code == 404
+
+
+def test_checklist_template_json_roundtrip_and_owner_isolation(client, app):
+    import io
+    import json
+    client.post("/register", data={"email": "json-owner@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    payload = {"version": 1, "templates": [
+        {"name": "Camera Kit", "items": ["Pack camera", "Charge batteries"]},
+        {"name": "Empty Kit", "items": []},
+    ]}
+    endpoint = "/checklist-templates/import"
+    response = client.post(endpoint, data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")}, content_type="multipart/form-data", follow_redirects=True)
+    assert "Imported 2 templates; skipped 0 duplicate names" in response.get_data(as_text=True)
+    exported = client.get("/checklist-templates/export")
+    assert exported.status_code == 200
+    assert exported.mimetype == "application/json"
+    assert json.loads(exported.data) == payload
+    assert b"user_id" not in exported.data
+    assert b"template_id" not in exported.data
+    second = client.post(endpoint, data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")}, content_type="multipart/form-data", follow_redirects=True)
+    assert "Imported 0 templates; skipped 2 duplicate names" in second.get_data(as_text=True)
+    client.post("/logout")
+    client.post("/register", data={"email": "json-other@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    assert json.loads(client.get("/checklist-templates/export").data)["templates"] == []
+
+
+def test_checklist_template_json_import_rejects_invalid_payload_atomically(client, app):
+    import io
+    import json
+    client.post("/register", data={"email": "json-invalid@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    invalid = [
+        b"not json",
+        json.dumps({"version": 2, "templates": []}).encode(),
+        json.dumps({"version": 1, "templates": [{"name": "Valid", "items": []}, {"name": "Bad", "items": [42]}]}).encode(),
+        json.dumps({"version": 1, "templates": [{"name": "", "items": []}]}).encode(),
+        json.dumps({"version": True, "templates": []}).encode(),
+        b" " * (1024 * 1024 + 1),
+    ]
+    for data in invalid:
+        response = client.post("/checklist-templates/import", data={"file": (io.BytesIO(data), "bad.json")}, content_type="multipart/form-data", follow_redirects=True)
+        assert response.status_code == 200
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
