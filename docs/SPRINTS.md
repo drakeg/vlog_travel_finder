@@ -1004,11 +1004,13 @@ Deferred:
 
 ### Sprint 39 — Checklist template duplication
 
-Status: In progress
+Status: Complete
 
 Planning issue: #254
 
-Scope:
+Merged implementation PR: #256 (Tests workflow passed)
+
+Shipped:
 
 - duplicate an owned checklist template under a distinct, nonempty, case-insensitive unique name;
 - copy item text and order into new records, including empty templates;
