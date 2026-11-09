@@ -1021,11 +1021,13 @@ Shipped:
 
 ### Sprint 40 — Checklist template JSON import/export
 
-Status: In progress
+Status: Complete
 
 Planning issue: #259
 
-Scope:
+Merged implementation PR: #261 (Tests workflow passed)
+
+Shipped:
 
 - export only the current user's templates as versioned JSON with ordered text items;
 - import validated version 1 JSON, skipping case-insensitive duplicate names;
