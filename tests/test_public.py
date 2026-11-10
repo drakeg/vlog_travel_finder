@@ -5157,3 +5157,38 @@ def test_checklist_template_json_import_rejects_invalid_payload_atomically(clien
         assert response.status_code == 200
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
+
+
+def test_checklist_template_import_preview_is_read_only_and_reports_conflicts(client, app):
+    import io
+    import json
+    client.post("/register", data={"email": "preview-user@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    payload = {"version": 1, "templates": [
+        {"name": "Pack", "items": ["Camera", "Battery"]},
+        {"name": "pack", "items": ["Duplicate"]},
+        {"name": "Empty", "items": []},
+    ]}
+    preview = client.post("/checklist-templates/preview",
+        data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")},
+        content_type="multipart/form-data", follow_redirects=True)
+    page = preview.get_data(as_text=True)
+    assert "Preview only: 2 templates and 2 items to import; 1 duplicate names skipped" in page
+    assert "Preview: import Pack (2 items)" in page
+    assert "Preview: skip existing template pack" in page
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
+    imported = client.post("/checklist-templates/import",
+        data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")},
+        content_type="multipart/form-data", follow_redirects=True)
+    assert "Imported 2 templates; skipped 1 duplicate names" in imported.get_data(as_text=True)
+
+
+def test_checklist_template_import_preview_rejects_invalid_without_writes(client, app):
+    import io
+    client.post("/register", data={"email": "preview-invalid@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    response = client.post("/checklist-templates/preview",
+        data={"file": (io.BytesIO(b'{"version":2,"templates":[]}'), "invalid.json")},
+        content_type="multipart/form-data", follow_redirects=True)
+    assert "Unsupported or invalid template import format" in response.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
