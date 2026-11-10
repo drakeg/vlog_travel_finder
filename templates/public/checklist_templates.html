@@ -21,7 +21,8 @@
         <label for="template-import-file" class="form-label">Import templates (JSON, max 1 MB)</label>
         <input class="form-control" id="template-import-file" name="file" type="file" accept=".json,application/json" required />
       </div>
-      <button class="btn btn-outline-secondary" type="submit">Import templates</button>
+      <button class="btn btn-outline-secondary" type="submit" formaction="{{ url_for('public.checklist_templates_preview') }}">Preview import</button>
+      <button class="btn btn-outline-primary" type="submit">Import templates</button>
     </form>
   </div>
   {% if templates %}
