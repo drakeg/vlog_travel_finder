@@ -1034,3 +1034,18 @@ Shipped:
 - reject invalid payloads atomically with 1 MB, 100-template, and 500-item-per-template limits;
 - preserve ownership and existing CSRF protections;
 - test round trips, isolation, duplicate handling, and invalid payloads.
+
+
+### Sprint 41 — Checklist template JSON import preview
+
+Status: In progress
+
+Planning issue: #263
+
+Scope:
+
+- validate uploaded JSON without saving records;
+- report per-template imports and case-insensitive duplicate skips;
+- summarize template and item counts;
+- share validation and size limits with actual import;
+- test preview read-only behavior and invalid payload rejection.
