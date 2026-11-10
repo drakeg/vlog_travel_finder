@@ -32,7 +32,7 @@ Flask app to manage and search travel-related places (restaurants, breweries, mu
   - Duplicating a trip copies its checklist items and resets them to incomplete
   - Checklist items can be imported from another owned trip, skipping duplicate task text
   - Reusable checklist templates can be duplicated with independent items and ordering
-  - Checklist templates can be exported and imported as version 1 JSON (`{\"version\":1,\"templates\":[{\"name\":\"Example\",\"items\":[\"Task\"]}]}`); imports skip case-insensitive duplicate names and reject invalid files
+  - Checklist templates can be exported and imported as version 1 JSON (`{\"version\":1,\"templates\":[{\"name\":\"Example\",\"items\":[\"Task\"]}]}`); imports skip case-insensitive duplicate names and reject invalid files. Use **Preview import** to validate the JSON and see which templates would be added or skipped without changing data
   - Checklist items support optional due dates with overdue and due-today status
   - Bulk checklist deletion includes a selected-item count, irreversible-action confirmation, and trip-scoped authorization
   - The Trips overview shows checklist progress, remaining tasks, and overdue preparation counts
