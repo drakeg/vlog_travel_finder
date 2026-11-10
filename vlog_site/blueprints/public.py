@@ -575,46 +575,85 @@ def checklist_templates_export():
     )
 
 
+def _parse_checklist_template_upload():
+        upload = request.files.get("file")
+        if upload is None:
+            raise ValueError("Select a JSON file to import")
+        raw = upload.stream.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("Template import exceeds the 1 MB limit")
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            raise ValueError("Invalid template JSON")
+        if (not isinstance(payload, dict)
+                or type(payload.get("version")) is not int
+                or payload["version"] != 1
+                or not isinstance(payload.get("templates"), list)
+                or len(payload["templates"]) > 100):
+            raise ValueError("Unsupported or invalid template import format")
+    
+        parsed = []
+        for entry in payload["templates"]:
+            if not isinstance(entry, dict) or set(entry) != {"name", "items"}:
+                raise ValueError("Invalid template entry")
+            name, items = entry["name"], entry["items"]
+            if (not isinstance(name, str) or not name.strip()
+                    or len(name) > 200 or not isinstance(items, list)
+                    or len(items) > 500 or any(
+                        not isinstance(item, str) or not item.strip() or len(item) > 500
+                        for item in items
+                    )):
+                raise ValueError("Invalid template name or items")
+            parsed.append((name.strip(), [item.strip() for item in items]))
+    
+        return parsed
+
+
+@public_bp.route("/checklist-templates/preview", methods=["POST"])
+@login_required
+def checklist_templates_preview():
+    destination = url_for("public.checklist_templates")
+    try:
+        parsed = _parse_checklist_template_upload()
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(destination)
+    db = get_session(current_app)
+    names = {
+        name.casefold() for name in db.execute(
+            select(ChecklistTemplate.name).where(
+                ChecklistTemplate.user_id == int(session["user_id"])
+            )
+        ).scalars().all()
+    }
+    added = skipped = item_count = 0
+    for name, items in parsed:
+        if name.casefold() in names:
+            skipped += 1
+            flash(f"Preview: skip existing template {name}", "info")
+        else:
+            added += 1
+            item_count += len(items)
+            flash(f"Preview: import {name} ({len(items)} items)", "info")
+            names.add(name.casefold())
+    flash(
+        f"Preview only: {added} templates and {item_count} items to import; "
+        f"{skipped} duplicate names skipped. No changes saved.",
+        "info",
+    )
+    return redirect(destination)
+
+
 @public_bp.route("/checklist-templates/import", methods=["POST"])
 @login_required
 def checklist_templates_import():
     destination = url_for("public.checklist_templates")
-    upload = request.files.get("file")
-    if upload is None:
-        flash("Select a JSON file to import", "error")
-        return redirect(destination)
-    raw = upload.stream.read(1024 * 1024 + 1)
-    if len(raw) > 1024 * 1024:
-        flash("Template import exceeds the 1 MB limit", "error")
-        return redirect(destination)
     try:
-        payload = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        flash("Invalid template JSON", "error")
+        parsed = _parse_checklist_template_upload()
+    except ValueError as exc:
+        flash(str(exc), "error")
         return redirect(destination)
-    if (not isinstance(payload, dict)
-            or type(payload.get("version")) is not int
-            or payload["version"] != 1
-            or not isinstance(payload.get("templates"), list)
-            or len(payload["templates"]) > 100):
-        flash("Unsupported or invalid template import format", "error")
-        return redirect(destination)
-
-    parsed = []
-    for entry in payload["templates"]:
-        if not isinstance(entry, dict) or set(entry) != {"name", "items"}:
-            flash("Invalid template entry", "error")
-            return redirect(destination)
-        name, items = entry["name"], entry["items"]
-        if (not isinstance(name, str) or not name.strip()
-                or len(name) > 200 or not isinstance(items, list)
-                or len(items) > 500 or any(
-                    not isinstance(item, str) or not item.strip() or len(item) > 500
-                    for item in items
-                )):
-            flash("Invalid template name or items", "error")
-            return redirect(destination)
-        parsed.append((name.strip(), [item.strip() for item in items]))
 
     db = get_session(current_app)
     names = {
