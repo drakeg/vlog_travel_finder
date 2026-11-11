@@ -1051,3 +1051,18 @@ Shipped:
 - summarize template and item counts;
 - share validation and size limits with actual import;
 - test preview read-only behavior and invalid payload rejection.
+
+
+### Sprint 42 — Checklist template import confirmation
+
+Status: In progress
+
+Planning issue: #266
+
+Scope:
+
+- require explicit confirmation after a read-only preview;
+- show per-template import/skip decisions and item counts;
+- sign confirmation data with a 15-minute expiry and session-bound one-time nonce;
+- revalidate schema, size, and owner-specific name conflicts at confirmation;
+- test replay, tampering, cancellation, and confirmation behavior.
