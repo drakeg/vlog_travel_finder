@@ -1038,11 +1038,13 @@ Shipped:
 
 ### Sprint 41 — Checklist template JSON import preview
 
-Status: In progress
+Status: Complete
 
 Planning issue: #263
 
-Scope:
+Merged implementation PR: #264 (Tests workflow passed)
+
+Shipped:
 
 - validate uploaded JSON without saving records;
 - report per-template imports and case-insensitive duplicate skips;
