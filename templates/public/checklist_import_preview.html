@@ -6,7 +6,7 @@
   <ul class="list-group mb-4">
     {% for item in plan %}
       <li class="list-group-item">
-        <strong>{{ item.name }}</strong> — {{ item.items|length }} item(s):
+        <strong>{{ item.name }}</strong> — {{ item['items']|length }} item(s):
         {% if item.action == "skip" %}Skip (duplicate name){% else %}Import{% endif %}
       </li>
     {% endfor %}
