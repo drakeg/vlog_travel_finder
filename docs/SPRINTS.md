@@ -1072,11 +1072,13 @@ Shipped:
 
 ### Sprint 43 — Checklist template import confirmation hardening
 
-Status: In progress
+Status: Complete
 
 Planning issue: #269
 
-Scope:
+Merged implementation PR: #270 (Tests workflow passed)
+
+Shipped:
 
 - store pending import payloads in private server-side instance files instead of signed form fields;
 - use short-lived, session-bound, one-time confirmation tokens;
