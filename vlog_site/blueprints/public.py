@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import json
+import secrets
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask import Response, send_from_directory
 from sqlalchemy import case, func, or_, select, text
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from ..access_control import require_feature
 from ..db import get_session
@@ -586,28 +588,52 @@ def _parse_checklist_template_upload():
             payload = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):
             raise ValueError("Invalid template JSON")
-        if (not isinstance(payload, dict)
-                or type(payload.get("version")) is not int
-                or payload["version"] != 1
-                or not isinstance(payload.get("templates"), list)
-                or len(payload["templates"]) > 100):
-            raise ValueError("Unsupported or invalid template import format")
-    
-        parsed = []
-        for entry in payload["templates"]:
-            if not isinstance(entry, dict) or set(entry) != {"name", "items"}:
-                raise ValueError("Invalid template entry")
-            name, items = entry["name"], entry["items"]
-            if (not isinstance(name, str) or not name.strip()
-                    or len(name) > 200 or not isinstance(items, list)
-                    or len(items) > 500 or any(
-                        not isinstance(item, str) or not item.strip() or len(item) > 500
-                        for item in items
-                    )):
-                raise ValueError("Invalid template name or items")
-            parsed.append((name.strip(), [item.strip() for item in items]))
-    
-        return parsed
+        return _validate_checklist_template_payload(payload)
+
+
+def _validate_checklist_template_payload(payload):
+    if (not isinstance(payload, dict)
+            or type(payload.get("version")) is not int
+            or payload["version"] != 1
+            or not isinstance(payload.get("templates"), list)
+            or len(payload["templates"]) > 100):
+        raise ValueError("Unsupported or invalid template import format")
+
+    parsed = []
+    for entry in payload["templates"]:
+        if not isinstance(entry, dict) or set(entry) != {"name", "items"}:
+            raise ValueError("Invalid template entry")
+        name, items = entry["name"], entry["items"]
+        if (not isinstance(name, str) or not name.strip()
+                or len(name) > 200 or not isinstance(items, list)
+                or len(items) > 500 or any(
+                    not isinstance(item, str) or not item.strip() or len(item) > 500
+                    for item in items
+                )):
+            raise ValueError("Invalid template name or items")
+        parsed.append((name.strip(), [item.strip() for item in items]))
+
+    return parsed
+
+
+def _checklist_import_plan(db, parsed):
+    names = {
+        name.casefold() for name in db.execute(
+            select(ChecklistTemplate.name).where(
+                ChecklistTemplate.user_id == int(session["user_id"])
+            )
+        ).scalars().all()
+    }
+    plan = []
+    for name, items in parsed:
+        action = "skip" if name.casefold() in names else "import"
+        plan.append({"name": name, "items": items, "action": action})
+        names.add(name.casefold())
+    return plan
+
+
+def _checklist_import_signer():
+    return URLSafeTimedSerializer(current_app.secret_key, salt="checklist-import-confirm-v1")
 
 
 @public_bp.route("/checklist-templates/preview", methods=["POST"])
@@ -620,60 +646,64 @@ def checklist_templates_preview():
         flash(str(exc), "error")
         return redirect(destination)
     db = get_session(current_app)
-    names = {
-        name.casefold() for name in db.execute(
-            select(ChecklistTemplate.name).where(
-                ChecklistTemplate.user_id == int(session["user_id"])
-            )
-        ).scalars().all()
-    }
-    added = skipped = item_count = 0
-    for name, items in parsed:
-        if name.casefold() in names:
-            skipped += 1
-            flash(f"Preview: skip existing template {name}", "info")
-        else:
-            added += 1
-            item_count += len(items)
-            flash(f"Preview: import {name} ({len(items)} items)", "info")
-            names.add(name.casefold())
-    flash(
-        f"Preview only: {added} templates and {item_count} items to import; "
-        f"{skipped} duplicate names skipped. No changes saved.",
-        "info",
+    plan = _checklist_import_plan(db, parsed)
+    nonce = secrets.token_urlsafe(24)
+    session["checklist_import_nonce"] = nonce
+    token = _checklist_import_signer().dumps({
+        "user_id": int(session["user_id"]),
+        "nonce": nonce,
+        "templates": [{"name": name, "items": items} for name, items in parsed],
+    })
+    return render_template(
+        "public/checklist_import_preview.html",
+        plan=plan,
+        token=token,
+        import_count=sum(item["action"] == "import" for item in plan),
+        skip_count=sum(item["action"] == "skip" for item in plan),
+        item_count=sum(len(item["items"]) for item in plan if item["action"] == "import"),
     )
-    return redirect(destination)
 
 
 @public_bp.route("/checklist-templates/import", methods=["POST"])
 @login_required
 def checklist_templates_import():
     destination = url_for("public.checklist_templates")
+    token = request.form.get("confirmation_token", "")
     try:
-        parsed = _parse_checklist_template_upload()
+        payload = _checklist_import_signer().loads(token, max_age=900)
+    except (BadSignature, SignatureExpired, ValueError):
+        flash("Import confirmation is invalid or expired; preview the file again", "error")
+        return redirect(destination)
+    if (not isinstance(payload, dict)
+            or payload.get("user_id") != int(session["user_id"])
+            or not session.get("checklist_import_nonce")
+            or payload.get("nonce") != session["checklist_import_nonce"]):
+        flash("Import confirmation is invalid or expired; preview the file again", "error")
+        return redirect(destination)
+    # Validate signed data with the same schema limits as upload parsing.
+    raw = json.dumps({"version": 1, "templates": payload.get("templates")}, ensure_ascii=False).encode("utf-8")
+    if len(raw) > 1024 * 1024:
+        flash("Import confirmation exceeds the 1 MB limit", "error")
+        return redirect(destination)
+    try:
+        parsed = _validate_checklist_template_payload(json.loads(raw))
     except ValueError as exc:
         flash(str(exc), "error")
         return redirect(destination)
-
+    # Consume the nonce before committing so a confirmation cannot be replayed.
+    session.pop("checklist_import_nonce", None)
     db = get_session(current_app)
-    names = {
-        name.casefold() for name in db.execute(
-            select(ChecklistTemplate.name).where(
-                ChecklistTemplate.user_id == int(session["user_id"])
-            )
-        ).scalars().all()
-    }
+    plan = _checklist_import_plan(db, parsed)
     imported = skipped = 0
-    for name, items in parsed:
-        if name.casefold() in names:
+    for entry in plan:
+        if entry["action"] == "skip":
             skipped += 1
             continue
-        template = ChecklistTemplate(user_id=int(session["user_id"]), name=name)
+        template = ChecklistTemplate(user_id=int(session["user_id"]), name=entry["name"])
         db.add(template)
         db.flush()
-        for position, item in enumerate(items, start=1):
+        for position, item in enumerate(entry["items"], start=1):
             db.add(ChecklistTemplateItem(template_id=template.id, text=item, position=position))
-        names.add(name.casefold())
         imported += 1
     db.commit()
     flash(f"Imported {imported} templates; skipped {skipped} duplicate names", "info")

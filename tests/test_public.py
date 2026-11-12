@@ -5116,6 +5116,16 @@ def test_checklist_template_duplicate_validates_name_and_owner(client, app):
     assert client.post(endpoint, data={"name": "Stolen Template"}).status_code == 404
 
 
+def _confirm_template_preview(client, payload):
+    import io
+    import json
+    import re
+    response = client.post("/checklist-templates/preview", data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")}, content_type="multipart/form-data")
+    assert response.status_code == 200
+    token = re.search('name="confirmation_token" value="([^"]+)"', response.get_data(as_text=True)).group(1)
+    return response, token
+
+
 def test_checklist_template_json_roundtrip_and_owner_isolation(client, app):
     import io
     import json
@@ -5124,8 +5134,8 @@ def test_checklist_template_json_roundtrip_and_owner_isolation(client, app):
         {"name": "Camera Kit", "items": ["Pack camera", "Charge batteries"]},
         {"name": "Empty Kit", "items": []},
     ]}
-    endpoint = "/checklist-templates/import"
-    response = client.post(endpoint, data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")}, content_type="multipart/form-data", follow_redirects=True)
+    _, token = _confirm_template_preview(client, payload)
+    response = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
     assert "Imported 2 templates; skipped 0 duplicate names" in response.get_data(as_text=True)
     exported = client.get("/checklist-templates/export")
     assert exported.status_code == 200
@@ -5133,7 +5143,8 @@ def test_checklist_template_json_roundtrip_and_owner_isolation(client, app):
     assert json.loads(exported.data) == payload
     assert b"user_id" not in exported.data
     assert b"template_id" not in exported.data
-    second = client.post(endpoint, data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")}, content_type="multipart/form-data", follow_redirects=True)
+    _, token = _confirm_template_preview(client, payload)
+    second = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
     assert "Imported 0 templates; skipped 2 duplicate names" in second.get_data(as_text=True)
     client.post("/logout")
     client.post("/register", data={"email": "json-other@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
@@ -5153,7 +5164,7 @@ def test_checklist_template_json_import_rejects_invalid_payload_atomically(clien
         b" " * (1024 * 1024 + 1),
     ]
     for data in invalid:
-        response = client.post("/checklist-templates/import", data={"file": (io.BytesIO(data), "bad.json")}, content_type="multipart/form-data", follow_redirects=True)
+        response = client.post("/checklist-templates/preview", data={"file": (io.BytesIO(data), "bad.json")}, content_type="multipart/form-data", follow_redirects=True)
         assert response.status_code == 200
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
@@ -5172,14 +5183,13 @@ def test_checklist_template_import_preview_is_read_only_and_reports_conflicts(cl
         data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")},
         content_type="multipart/form-data", follow_redirects=True)
     page = preview.get_data(as_text=True)
-    assert "Preview only: 2 templates and 2 items to import; 1 duplicate names skipped" in page
-    assert "Preview: import Pack (2 items)" in page
-    assert "Preview: skip existing template pack" in page
+    assert "Confirm to import 2 template(s) with 2 item(s); 1 duplicate name(s) will be skipped" in page
+    assert "Skip (duplicate name)" in page
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
-    imported = client.post("/checklist-templates/import",
-        data={"file": (io.BytesIO(json.dumps(payload).encode()), "templates.json")},
-        content_type="multipart/form-data", follow_redirects=True)
+    import re
+    token = re.search('name="confirmation_token" value="([^"]+)"', page).group(1)
+    imported = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
     assert "Imported 2 templates; skipped 1 duplicate names" in imported.get_data(as_text=True)
 
 
@@ -5192,3 +5202,20 @@ def test_checklist_template_import_preview_rejects_invalid_without_writes(client
     assert "Unsupported or invalid template import format" in response.get_data(as_text=True)
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
+
+
+def test_checklist_template_confirmation_replay_and_tamper(client, app):
+    payload = {"version": 1, "templates": [{"name": "Trip kit", "items": ["Pack"]}]}
+    client.post("/register", data={"email": "confirm-security@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    _, token = _confirm_template_preview(client, payload)
+    assert client.get("/checklist-templates").status_code == 200
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
+    bad = client.post("/checklist-templates/import", data={"confirmation_token": token + "x"}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in bad.get_data(as_text=True)
+    ok = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Imported 1 templates" in ok.get_data(as_text=True)
+    replay = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in replay.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 1

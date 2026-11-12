@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Confirm Checklist Import - {{ site_name }}{% endblock %}
+{% block content %}
+  <h1>Preview checklist template import</h1>
+  <p>No templates have been saved. Confirm to import {{ import_count }} template(s) with {{ item_count }} item(s); {{ skip_count }} duplicate name(s) will be skipped.</p>
+  <ul class="list-group mb-4">
+    {% for item in plan %}
+      <li class="list-group-item">
+        <strong>{{ item.name }}</strong> — {{ item['items']|length }} item(s):
+        {% if item.action == "skip" %}Skip (duplicate name){% else %}Import{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('public.checklist_templates_import') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="confirmation_token" value="{{ token }}" />
+    <button type="submit" class="btn btn-primary">Confirm import</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('public.checklist_templates') }}">Cancel</a>
+  </form>
+{% endblock %}
