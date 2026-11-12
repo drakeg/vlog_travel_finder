@@ -1068,3 +1068,17 @@ Shipped:
 - sign confirmation data with a 15-minute expiry and session-bound one-time nonce;
 - revalidate schema, size, and owner-specific name conflicts at confirmation;
 - test replay, tampering, cancellation, and confirmation behavior.
+
+
+### Sprint 43 — Checklist template import confirmation hardening
+
+Status: In progress
+
+Planning issue: #269
+
+Scope:
+
+- store pending import payloads in private server-side instance files instead of signed form fields;
+- use short-lived, session-bound, one-time confirmation tokens;
+- invalidate prior previews and support explicit cancellation;
+- revalidate pending data before import and test security boundaries.
