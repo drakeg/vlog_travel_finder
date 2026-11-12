@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import json
 import secrets
+import tempfile
+import pathlib
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -632,14 +634,38 @@ def _checklist_import_plan(db, parsed):
     return plan
 
 
+def _pending_import_dir():
+    folder = pathlib.Path(current_app.instance_path) / "pending-checklist-imports"
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return folder
+
+
+def _pending_import_path(nonce):
+    if not isinstance(nonce, str) or len(nonce) != 48 or any(
+        character not in "0123456789abcdef" for character in nonce
+    ):
+        raise ValueError("Invalid pending import reference")
+    return _pending_import_dir() / (nonce + ".json")
+
+
+def _discard_pending_import():
+    nonce = session.pop("checklist_import_nonce", None)
+    if nonce:
+        try:
+            _pending_import_path(nonce).unlink(missing_ok=True)
+        except ValueError:
+            pass
+
+
 def _checklist_import_signer():
-    return URLSafeTimedSerializer(current_app.secret_key, salt="checklist-import-confirm-v1")
+    return URLSafeTimedSerializer(current_app.secret_key, salt="checklist-import-confirm-v2")
 
 
 @public_bp.route("/checklist-templates/preview", methods=["POST"])
 @login_required
 def checklist_templates_preview():
     destination = url_for("public.checklist_templates")
+    _discard_pending_import()
     try:
         parsed = _parse_checklist_template_upload()
     except ValueError as exc:
@@ -647,21 +673,37 @@ def checklist_templates_preview():
         return redirect(destination)
     db = get_session(current_app)
     plan = _checklist_import_plan(db, parsed)
-    nonce = secrets.token_urlsafe(24)
+    nonce = secrets.token_hex(24)
+    data = json.dumps({"version": 1, "templates": [
+        {"name": name, "items": items} for name, items in parsed
+    ]}, ensure_ascii=False).encode("utf-8")
+    if len(data) > 1024 * 1024:
+        flash("Template import exceeds the 1 MB limit", "error")
+        return redirect(destination)
+    path = _pending_import_path(nonce)
+    # A private, exclusively created file avoids large cookies and hidden form fields.
+    with path.open("xb") as pending:
+        os.chmod(path, 0o600)
+        pending.write(data)
     session["checklist_import_nonce"] = nonce
     token = _checklist_import_signer().dumps({
-        "user_id": int(session["user_id"]),
-        "nonce": nonce,
-        "templates": [{"name": name, "items": items} for name, items in parsed],
+        "user_id": int(session["user_id"]), "nonce": nonce,
     })
     return render_template(
         "public/checklist_import_preview.html",
-        plan=plan,
-        token=token,
+        plan=plan, token=token,
         import_count=sum(item["action"] == "import" for item in plan),
         skip_count=sum(item["action"] == "skip" for item in plan),
         item_count=sum(len(item["items"]) for item in plan if item["action"] == "import"),
     )
+
+
+@public_bp.route("/checklist-templates/import/cancel", methods=["POST"])
+@login_required
+def checklist_templates_import_cancel():
+    _discard_pending_import()
+    flash("Checklist template import cancelled", "info")
+    return redirect(url_for("public.checklist_templates"))
 
 
 @public_bp.route("/checklist-templates/import", methods=["POST"])
@@ -680,18 +722,20 @@ def checklist_templates_import():
             or payload.get("nonce") != session["checklist_import_nonce"]):
         flash("Import confirmation is invalid or expired; preview the file again", "error")
         return redirect(destination)
-    # Validate signed data with the same schema limits as upload parsing.
-    raw = json.dumps({"version": 1, "templates": payload.get("templates")}, ensure_ascii=False).encode("utf-8")
-    if len(raw) > 1024 * 1024:
-        flash("Import confirmation exceeds the 1 MB limit", "error")
-        return redirect(destination)
+    nonce = payload["nonce"]
     try:
-        parsed = _validate_checklist_template_payload(json.loads(raw))
-    except ValueError as exc:
-        flash(str(exc), "error")
+        path = _pending_import_path(nonce)
+        # Consume the pending file before any database writes.
+        with path.open("rb") as pending:
+            raw = pending.read(1024 * 1024 + 1)
+        path.unlink()
+        session.pop("checklist_import_nonce", None)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("Template import exceeds the 1 MB limit")
+        parsed = _validate_checklist_template_payload(json.loads(raw.decode("utf-8")))
+    except (OSError, ValueError, UnicodeDecodeError):
+        flash("Import confirmation is invalid or expired; preview the file again", "error")
         return redirect(destination)
-    # Consume the nonce before committing so a confirmation cannot be replayed.
-    session.pop("checklist_import_nonce", None)
     db = get_session(current_app)
     plan = _checklist_import_plan(db, parsed)
     imported = skipped = 0

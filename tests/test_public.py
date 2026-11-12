@@ -5219,3 +5219,40 @@ def test_checklist_template_confirmation_replay_and_tamper(client, app):
     assert "Import confirmation is invalid or expired" in replay.get_data(as_text=True)
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 1
+
+
+def test_checklist_import_cancel_invalidates_pending_confirmation(client, app):
+    payload = {"version": 1, "templates": [{"name": "Cancelled kit", "items": ["Camera"]}]}
+    client.post("/register", data={"email": "cancel-import@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    preview, token = _confirm_template_preview(client, payload)
+    assert len(token) < 300
+    cancelled = client.post("/checklist-templates/import/cancel", follow_redirects=True)
+    assert "Checklist template import cancelled" in cancelled.get_data(as_text=True)
+    denied = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in denied.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
+
+
+def test_checklist_import_new_preview_invalidates_old_confirmation(client, app):
+    client.post("/register", data={"email": "replace-import@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    _, old_token = _confirm_template_preview(client, {"version": 1, "templates": [{"name": "Old", "items": []}]})
+    _, new_token = _confirm_template_preview(client, {"version": 1, "templates": [{"name": "New", "items": []}]})
+    old = client.post("/checklist-templates/import", data={"confirmation_token": old_token}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in old.get_data(as_text=True)
+    new = client.post("/checklist-templates/import", data={"confirmation_token": new_token}, follow_redirects=True)
+    assert "Imported 1 templates" in new.get_data(as_text=True)
+    with app.app_context():
+        names = [item.name for item in get_session(app).query(ChecklistTemplate).all()]
+    assert names == ["New"]
+
+
+def test_checklist_import_large_preview_uses_small_token(client, app):
+    client.post("/register", data={"email": "large-import@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    payload = {"version": 1, "templates": [{"name": "Large", "items": [("Item %03d " % i) + ("x" * 450) for i in range(500)]}]}
+    _, token = _confirm_template_preview(client, payload)
+    assert len(token) < 300
+    imported = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Imported 1 templates" in imported.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplateItem).count() == 500
