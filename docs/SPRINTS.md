@@ -1055,11 +1055,13 @@ Shipped:
 
 ### Sprint 42 — Checklist template import confirmation
 
-Status: In progress
+Status: Complete
 
 Planning issue: #266
 
-Scope:
+Merged implementation PR: #267 (Tests workflow passed)
+
+Shipped:
 
 - require explicit confirmation after a read-only preview;
 - show per-template import/skip decisions and item counts;
