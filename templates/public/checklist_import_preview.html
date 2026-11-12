@@ -15,6 +15,9 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
     <input type="hidden" name="confirmation_token" value="{{ token }}" />
     <button type="submit" class="btn btn-primary">Confirm import</button>
-    <a class="btn btn-outline-secondary" href="{{ url_for('public.checklist_templates') }}">Cancel</a>
+    </form>
+  <form method="post" action="{{ url_for('public.checklist_templates_import_cancel') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
+    <button type="submit" class="btn btn-outline-secondary">Cancel</button>
   </form>
 {% endblock %}
