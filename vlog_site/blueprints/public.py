@@ -5,6 +5,7 @@ import json
 import secrets
 import tempfile
 import pathlib
+import time
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -634,10 +635,31 @@ def _checklist_import_plan(db, parsed):
     return plan
 
 
+_PENDING_IMPORT_MAX_AGE = 900
+
+
 def _pending_import_dir():
-    folder = pathlib.Path(current_app.instance_path) / "pending-checklist-imports"
+    configured = current_app.config.get("PENDING_CHECKLIST_IMPORT_DIR")
+    folder = pathlib.Path(configured) if configured else pathlib.Path(current_app.instance_path) / "pending-checklist-imports"
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     return folder
+
+
+def _cleanup_expired_pending_imports():
+    """Remove expired pending uploads, including abandoned and claimed files."""
+    folder = _pending_import_dir()
+    cutoff = time.time() - _PENDING_IMPORT_MAX_AGE
+    for path in folder.iterdir():
+        if not path.is_file() or not (
+            (len(path.name) == 53 and path.name.endswith(".json"))
+            or (path.name.startswith("claimed-") and path.name.endswith(".json"))
+        ):
+            continue
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+        except FileNotFoundError:
+            continue
 
 
 def _pending_import_path(nonce):
@@ -666,6 +688,7 @@ def _checklist_import_signer():
 def checklist_templates_preview():
     destination = url_for("public.checklist_templates")
     _discard_pending_import()
+    _cleanup_expired_pending_imports()
     try:
         parsed = _parse_checklist_template_upload()
     except ValueError as exc:
@@ -724,12 +747,19 @@ def checklist_templates_import():
         return redirect(destination)
     nonce = payload["nonce"]
     try:
+        _cleanup_expired_pending_imports()
         path = _pending_import_path(nonce)
-        # Consume the pending file before any database writes.
-        with path.open("rb") as pending:
-            raw = pending.read(1024 * 1024 + 1)
-        path.unlink()
+        # Atomic rename allows only one concurrent request to claim this upload.
+        claimed = _pending_import_dir() / ("claimed-" + nonce + "-" + secrets.token_hex(8) + ".json")
+        os.rename(path, claimed)
         session.pop("checklist_import_nonce", None)
+        try:
+            if time.time() - claimed.stat().st_mtime > _PENDING_IMPORT_MAX_AGE:
+                raise ValueError("Expired pending import")
+            with claimed.open("rb") as pending:
+                raw = pending.read(1024 * 1024 + 1)
+        finally:
+            claimed.unlink(missing_ok=True)
         if len(raw) > 1024 * 1024:
             raise ValueError("Template import exceeds the 1 MB limit")
         parsed = _validate_checklist_template_payload(json.loads(raw.decode("utf-8")))
