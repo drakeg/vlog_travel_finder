@@ -330,3 +330,8 @@ flask create-admin
 # or
 flask promote-admin you@example.com
 ```
+
+
+### Pending checklist template imports
+
+The preview-and-confirm flow writes temporary JSON uploads to a private directory. Set `PENDING_CHECKLIST_IMPORT_DIR` in the Flask app configuration to an absolute path on a **shared persistent volume** when running multiple app workers or instances; by default the app uses `instance/pending-checklist-imports`. All workers must use the same `SECRET_KEY` and access the same pending-import directory. The application uses an atomic rename to claim each pending upload once; the shared filesystem must support atomic renames. Pending uploads expire after 15 minutes, and expired files are cleaned up when new previews or confirmations run. Ensure this directory is writable only by the application and is not web-served. Avoid using per-container ephemeral storage for a multi-instance deployment.
