@@ -15,3 +15,13 @@ def test_filming_planner_is_linked_from_navigation(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"/filming-planner" in response.data
+
+
+def test_filming_schedule_controls_present(client):
+    response = client.get("/filming-planner")
+    assert response.status_code == 200
+    assert b'id="travel"' in response.data
+    assert b'id="schedule"' in response.data
+    assert b'id="feasibility"' in response.data
+    assert b"Estimated travel per leg" in response.data
+    assert b"Film minutes" in response.data
