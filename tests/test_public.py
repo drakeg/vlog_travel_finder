@@ -5313,3 +5313,27 @@ def test_pending_import_storage_failure_is_user_friendly(client, app, monkeypatc
     assert "Import storage is temporarily unavailable" in response.get_data(as_text=True)
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
+
+
+def test_pending_import_cleanup_preserves_recent_claims_and_unrelated_files(app):
+    import os
+    import time
+    from pathlib import Path
+    from vlog_site.blueprints.public import _cleanup_expired_pending_imports
+    with app.app_context():
+        folder = Path(app.instance_path) / "pending-checklist-imports"
+        folder.mkdir(exist_ok=True)
+        recent_claim = folder / ("claimed-" + "a" * 48 + "-worker.json")
+        old_claim = folder / ("claimed-" + "b" * 48 + "-worker.json")
+        old_pending = folder / ("c" * 48 + ".json")
+        unrelated = folder / "notes.json"
+        for file in (recent_claim, old_claim, old_pending, unrelated):
+            file.write_text("{}")
+        os.utime(recent_claim, (time.time() - 1200, time.time() - 1200))
+        for file in (old_claim, old_pending, unrelated):
+            os.utime(file, (time.time() - 7200, time.time() - 7200))
+        _cleanup_expired_pending_imports()
+        assert recent_claim.exists()
+        assert not old_claim.exists()
+        assert not old_pending.exists()
+        assert unrelated.exists()
