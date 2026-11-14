@@ -649,14 +649,19 @@ def _cleanup_expired_pending_imports():
     """Remove expired pending uploads, including abandoned and claimed files."""
     folder = _pending_import_dir()
     cutoff = clock_time.time() - _PENDING_IMPORT_MAX_AGE
+    # Claimed files may be in use; allow a longer grace period before cleanup.
+    claimed_cutoff = clock_time.time() - (4 * _PENDING_IMPORT_MAX_AGE)
     for path in folder.iterdir():
-        if not path.is_file() or not (
-            (len(path.name) == 53 and path.name.endswith(".json"))
-            or (path.name.startswith("claimed-") and path.name.endswith(".json"))
-        ):
+        if not path.is_file():
+            continue
+        pending_name = len(path.name) == 53 and path.name.endswith(".json") and all(
+            char in "0123456789abcdef" for char in path.name[:-5]
+        )
+        claimed_name = path.name.startswith("claimed-") and path.name.endswith(".json")
+        if not (pending_name or claimed_name):
             continue
         try:
-            if path.stat().st_mtime < cutoff:
+            if path.stat().st_mtime < (claimed_cutoff if claimed_name else cutoff):
                 path.unlink(missing_ok=True)
         except (FileNotFoundError, PermissionError):
             continue
