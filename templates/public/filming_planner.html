@@ -23,7 +23,7 @@
  <p class="film-muted mb-0">Plan a short outing, select stops, and make a printable shoot sheet.</p></div>
  <div class="d-flex gap-2 film-controls"><button type="button" class="btn btn-outline-secondary" id="savePlan">Save on this device</button><button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button></div>
 </div>
-<div class="alert alert-info no-print">First release: manual stop selection with suggested place types. Travel times, opening hours, weather and event access are <strong>not verified automatically</strong>. Confirm them before leaving.</div>
+<div class="alert alert-info no-print">Choose manual stops, explore existing catalog destinations or opt in to a configured OpenStreetMap nearby search. Travel times, opening hours, weather and event access are <strong>not verified automatically</strong>. Confirm them before leaving.</div>
 <form id="filmForm" onsubmit="return false">
 <section class="film-panel">
  <h2 class="h5">1. Your starting point and available time</h2>
@@ -50,6 +50,14 @@
   <div class="col-md-4"><button type="button" class="btn btn-primary w-100" id="discoverStops">Discover destinations</button></div>
  </div>
  <div id="discoveryResults" class="mt-3 no-print" aria-live="polite"></div>
+ <div class="row g-2 align-items-end mt-3 no-print">
+  <div class="col-md-4"><label class="form-label" for="nearLat">Nearby search latitude</label><input class="form-control" id="nearLat" type="number" min="-90" max="90" step="any" placeholder="e.g., 34.70"></div>
+  <div class="col-md-4"><label class="form-label" for="nearLon">Longitude</label><input class="form-control" id="nearLon" type="number" min="-180" max="180" step="any" placeholder="e.g., -84.48"></div>
+  <div class="col-md-4"><button type="button" class="btn btn-outline-primary w-100" id="discoverNearby">Search nearby on OpenStreetMap</button></div>
+ </div>
+ <p class="film-muted small mt-2 no-print">Optional: enter coordinates and click to send them to the operator-configured OpenStreetMap provider. Requires an account and provider configuration. Search uses a 15 km straight-line radius; do not treat distance as a driving ETA.</p>
+ <div id="nearbyResults" class="mt-3 no-print" aria-live="polite"></div>
+
  <p class="film-muted small mt-2 no-print">These are existing catalog places, not live search results. Opening hours, access, weather and driving times have not been verified.</p>
 
  <div class="mt-3"><label for="stopName" class="form-label">Add a destination you want to film</label>
@@ -159,6 +167,38 @@ async function discoverCatalog(){
 }
 $('discoverStops').addEventListener('click',discoverCatalog);
 
+async function discoverOpenStreetMap(){
+ const target=$('nearbyResults');target.textContent='Searching for nearby filming locations…';
+ const latitude=$('nearLat').value.trim(),longitude=$('nearLon').value.trim();
+ if(!latitude||!longitude){target.textContent='Enter latitude and longitude to search nearby places.';return;}
+ try{
+  const query=new URLSearchParams({latitude,longitude,radius_m:'15000'});
+  const response=await fetch('/filming-planner/discover/nearby?'+query.toString());
+  const data=await response.json();
+  if(!response.ok){target.textContent=data.error||'Nearby search is unavailable.';return;}
+  target.replaceChildren();
+  if(!data.suggestions.length){target.textContent='No named nearby filming destinations found. Try the local catalog or add a stop manually.';return;}
+  const summary=document.createElement('p');summary.className='film-muted small';summary.textContent='Suggestions from OpenStreetMap contributors. Straight-line distances only; verify access and driving times.';target.appendChild(summary);
+  data.suggestions.forEach(place=>{
+   const card=document.createElement('div');card.className='film-card';
+   const name=document.createElement('strong');name.textContent=place.name;card.appendChild(name);
+   const meta=document.createElement('p');meta.className='film-muted small mb-1';meta.textContent=place.category+' · '+place.distance_km+' km straight-line · '+place.source;card.appendChild(meta);
+   const angle=document.createElement('p');angle.className='mb-2';angle.textContent=place.why_film;card.appendChild(angle);
+   const add=document.createElement('button');add.className='btn btn-sm btn-outline-primary me-2';add.type='button';add.textContent='Add to filming plan';
+   add.addEventListener('click',()=>{
+    if(stops.some(s=>s.osmId===place.id||(s.name||'').trim().toLowerCase()===place.name.trim().toLowerCase())){add.textContent='Already in plan';return;}
+    if(stops.length>=8){add.textContent='Eight-stop limit reached';return;}
+    stops.push({name:place.name,selected:true,minutes:45,osmId:place.id,mapQuery:String(place.latitude)+','+String(place.longitude)});
+    add.textContent='Added';display();
+   });
+   const source=document.createElement('a');source.className='btn btn-sm btn-outline-secondary';source.target='_blank';source.rel='noopener noreferrer';source.href=place.osm_url;source.textContent='OpenStreetMap source';
+   card.appendChild(add);card.appendChild(source);target.appendChild(card);
+  });
+ }catch(error){target.textContent='Nearby search could not be completed. Try catalog search or manual stops.';}
+}
+$('discoverNearby').addEventListener('click',discoverOpenStreetMap);
+
+
 $('addStop').addEventListener('click',addStop);
 $('stopName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addStop();}});
 $('stops').addEventListener('click',e=>{
@@ -171,7 +211,7 @@ $('stops').addEventListener('change',e=>{if(e.target.dataset.stop!==undefined){s
 $('shots').innerHTML=defaultShots.map((s,i)=>'<div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="shot'+i+'"><label class="form-check-label" for="shot'+i+'">'+esc(s)+'</label></div>').join('');
 ['start','day','leave','back','buffer','travel','walking','conditions'].forEach(id=>$(id).addEventListener('input',display));
 $('savePlan').addEventListener('click',()=>{
- const fields=['start','discoverCity','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
+ const fields=['start','discoverCity','nearLat','nearLon','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
  const data={fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),stops,shots:defaultShots.map((_,i)=>$('shot'+i).checked)};
  try{localStorage.setItem('vlog_filming_planner_v1',JSON.stringify(data));alert('Saved in this browser on this device.');}
  catch(e){alert('Browser storage is unavailable. Use Print / Save PDF to keep a copy.');}
