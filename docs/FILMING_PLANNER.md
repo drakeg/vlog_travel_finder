@@ -65,3 +65,12 @@ An internal OpenStreetMap Overpass adapter is being added as a separately testab
 The adapter does not contact a public service by default. A 15-minute per-process cache and a 15-second per-process query guard are *not* sufficient for deployment-wide quotas in multi-worker installations. Before turning on a shared public endpoint in production, implement shared caching/global rate enforcement and follow the relevant OSM provider usage policy. See https://wiki.openstreetmap.org/wiki/Overpass_API and https://operations.osmfoundation.org/policies/nominatim/.
 
 Keep catalog discovery and manual destinations as fully functional fallbacks. No external provider should receive location data without the user initiating and understanding the request.
+
+
+## Optional nearby discovery in the planner
+
+The OpenStreetMap search button accepts manually entered latitude and longitude (15 km straight-line search radius). It is offered alongside city-based catalog search. It runs **only after explicit user action** and requires a signed-in user. Search coordinates are sent to the operator-configured external provider; do not enter a private/home location unless comfortable sharing it.
+
+To enable with a provider you operate or are permitted to use, set `FILMING_LIVE_DISCOVERY_ENABLED=true`, `FILMING_OVERPASS_URL=https://your-overpass-provider/.../interpreter`, and an identifying `FILMING_OSM_USER_AGENT`. Docker Compose forwards these optional settings from `.env`. Without configuration, the app responds with a friendly unavailable state; catalog and manual workflows remain usable.
+
+Shared public Overpass servers are *not* unrestricted production infrastructure. The in-process cache and throttle do not implement application-wide limits across multiple workers. Use an operator-managed rate-limiting proxy/shared cache or self-hosted instance for production and follow the upstream service's policy. The next step is convenient opt-in place-name geocoding with appropriate provider licensing, global quotas, and privacy controls. **Neither OSM straight-line distances nor manual travel minutes are actual driving ETAs.**
