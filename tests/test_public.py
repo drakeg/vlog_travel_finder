@@ -5294,3 +5294,22 @@ def test_pending_checklist_import_claim_is_single_use(client, app):
     with app.app_context():
         assert get_session(app).query(ChecklistTemplate).count() == 0
     claimed.unlink(missing_ok=True)
+
+
+def test_pending_import_storage_failure_is_user_friendly(client, app, monkeypatch):
+    from vlog_site.blueprints import public
+    client.post("/register", data={"email": "storage-error@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    def unavailable():
+        raise PermissionError("storage unavailable")
+    monkeypatch.setattr(public, "_pending_import_dir", unavailable)
+    import io
+    import json
+    response = client.post(
+        "/checklist-templates/preview",
+        data={"file": (io.BytesIO(json.dumps({"version": 1, "templates": [{"name": "Kit", "items": []}]}).encode()), "kit.json")},
+        content_type="multipart/form-data", follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert "Import storage is temporarily unavailable" in response.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
