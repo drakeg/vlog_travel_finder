@@ -1,14 +1,11 @@
-"""Filming planning workspace — standalone read-only blueprint.
-
-Planning happens client-side in the MVP; no external services are called
-without the user choosing to open a map search or route.
-"""
-from flask import Blueprint, current_app, jsonify, render_template, request, url_for
+"""Filming Planner routes integrated into the Vlog Travel Finder application."""
+from flask import Blueprint, current_app, jsonify, render_template, request, session, url_for
 from sqlalchemy import func, select
 
 from ..access_control import require_feature
 from ..db import get_session
 from ..models import Category, Place
+from ..services.filming_places import OSMDiscoveryUnavailable, discover_osm_places
 
 filming_bp = Blueprint("filming", __name__)
 
@@ -74,4 +71,31 @@ def discover():
         "suggestions": suggestions,
         "source": "Vlog Travel Finder catalog",
         "limitations": "Not a live nearby search; driving time, access, weather and hours are unverified.",
+    })
+
+
+@filming_bp.get("/filming-planner/discover/nearby")
+@require_feature("places")
+def discover_nearby():
+    """Opt-in coordinate search; never contact a remote service by default."""
+    if session.get("user_id") is None or session.get("anonymous_preview"):
+        return jsonify({"error": "Sign in to search external nearby destinations.", "suggestions": []}), 401
+    if not current_app.config.get("FILMING_LIVE_DISCOVERY_ENABLED"):
+        return jsonify({"error": "External nearby discovery is disabled on this deployment.", "suggestions": []}), 503
+    try:
+        places = discover_osm_places(
+            request.args.get("latitude", ""),
+            request.args.get("longitude", ""),
+            radius_m=int(request.args.get("radius_m", "15000")),
+            endpoint=current_app.config.get("FILMING_OVERPASS_URL", ""),
+            user_agent=current_app.config.get("FILMING_OSM_USER_AGENT", ""),
+        )
+    except (ValueError, TypeError, OverflowError):
+        return jsonify({"error": "Enter valid latitude, longitude and search radius.", "suggestions": []}), 400
+    except OSMDiscoveryUnavailable:
+        return jsonify({"error": "Nearby discovery is unavailable. Try catalog search or manual stops.", "suggestions": []}), 503
+    return jsonify({
+        "source": "OpenStreetMap contributors",
+        "suggestions": places,
+        "limitations": "Distances are straight-line estimates; hours, access, weather and actual driving times are unverified.",
     })
