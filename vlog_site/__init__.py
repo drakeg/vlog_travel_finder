@@ -82,6 +82,12 @@ def create_app() -> Flask:
         SESSION_COOKIE_SECURE=_env_bool("SESSION_COOKIE_SECURE", False),
         SECURITY_HSTS_ENABLED=_env_bool("SECURITY_HSTS_ENABLED", False),
         SECURITY_HSTS_MAX_AGE=_env_int("SECURITY_HSTS_MAX_AGE", 31536000),
+        FILMING_LIVE_DISCOVERY_ENABLED=_env_bool("FILMING_LIVE_DISCOVERY_ENABLED", False),
+        FILMING_OVERPASS_URL=os.environ.get("FILMING_OVERPASS_URL", "").strip(),
+        FILMING_OSM_USER_AGENT=os.environ.get(
+            "FILMING_OSM_USER_AGENT",
+            "VlogTravelFinder-FilmingPlanner/1.0 (+https://github.com/drakeg/vlog_travel_finder)",
+        ),
     )
 
     _validate_production_config(app)
