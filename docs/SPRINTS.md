@@ -1120,9 +1120,9 @@ Scope:
 
 ### Sprint 46 — Filming planner schedule feasibility
 
-Status: In progress
+Status: Complete
 
-Implementation PR: #279
+Merged implementation PR: #279 (Tests workflow passed)
 
 Scope:
 
@@ -1130,3 +1130,19 @@ Scope:
 - estimate return time against a user-provided deadline and contingency buffer;
 - retain timing inputs in browser saves;
 - add route smoke coverage and planning documentation.
+
+
+### Sprint 47 — Filming destination discovery from existing places
+
+Status: In progress
+
+Planning issue: #281
+
+Scope:
+
+- search Vlog Travel Finder's real existing destination records by city;
+- show the provenance, creator-oriented filming angle and unverified live details;
+- add a discovered place to the existing stop builder without duplicate entries;
+- test catalog filtering, invalid queries and existing access restrictions.
+
+Next planned increments: OpenStreetMap place discovery #282, route timing #283, conditions #284, optimization #285, professional PDFs #286, account-saved plans #287, creator tools #288, free hosting #289.
