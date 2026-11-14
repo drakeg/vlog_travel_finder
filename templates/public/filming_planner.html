@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Filming Planner | {{ site_name }}{% endblock %}
+{% block content %}
+<style>
+.film-panel{background:#fff;border:1px solid #d8e0e7;border-radius:16px;padding:1.25rem;margin-bottom:1rem}
+.film-card{border:1px solid #d8e0e7;border-radius:12px;padding:.9rem;margin-bottom:.65rem}
+.film-card .form-check{margin-bottom:0}
+.film-muted{color:#5b6674}.film-badge{font-size:.75rem}
+@media print {
+ header,footer,.film-controls,.no-print,.navbar,.btn{display:none!important}
+ main.container{max-width:100%;padding:0!important}
+ .film-panel{break-inside:avoid;border:1px solid #777;padding:.65rem;margin-bottom:.6rem}
+ .film-card{break-inside:avoid}
+ input,textarea,select{border:0!important;padding:0!important;appearance:none}
+ .form-check-input{appearance:auto!important;border:1px solid #222!important}
+ .print-only{display:block!important}
+ body{font-size:11pt;color:#111}
+}
+.print-only{display:none}
+</style>
+<div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
+ <div><h1 class="mb-1"><i class="fa-solid fa-clapperboard me-2"></i>Filming Planner</h1>
+ <p class="film-muted mb-0">Plan a short outing, select stops, and make a printable shoot sheet.</p></div>
+ <div class="d-flex gap-2 film-controls"><button type="button" class="btn btn-outline-secondary" id="savePlan">Save on this device</button><button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button></div>
+</div>
+<div class="alert alert-info no-print">First release: manual stop selection with suggested place types. Travel times, opening hours, weather and event access are <strong>not verified automatically</strong>. Confirm them before leaving.</div>
+<form id="filmForm" onsubmit="return false">
+<section class="film-panel">
+ <h2 class="h5">1. Your starting point and available time</h2>
+ <div class="row g-3">
+  <div class="col-md-6"><label class="form-label" for="start">Starting location</label><input id="start" class="form-control" required placeholder="Campground, address, city or landmark"></div>
+  <div class="col-md-3"><label for="day" class="form-label">Date</label><input type="date" id="day" class="form-control"></div>
+  <div class="col-md-3"><label for="window" class="form-label">Time window</label><select id="window" class="form-select"><option value="lunch">After lunch, before dinner</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="all">All day</option><option value="exact">Exact times</option></select></div>
+  <div class="col-md-3"><label class="form-label" for="leave">Leave at</label><input id="leave" type="time" class="form-control" value="13:00"></div>
+  <div class="col-md-3"><label class="form-label" for="back">Must return by</label><input id="back" type="time" class="form-control" value="16:30"></div>
+  <div class="col-md-3"><label for="buffer" class="form-label">Return buffer (minutes)</label><input id="buffer" type="number" min="0" max="180" step="5" class="form-control" value="30"></div>
+  <div class="col-md-3"><label for="walking" class="form-label">Walking comfort</label><select id="walking" class="form-select"><option>Minimal walking</option><option selected>Easy walks</option><option>Moderate hikes</option><option>Long hikes welcome</option></select></div>
+  <div class="col-12"><label class="form-label" for="conditions">Conditions and constraints</label><input id="conditions" class="form-control" placeholder="Cold weather; avoid steep hikes; need restroom stops"></div>
+ </div>
+ <p class="film-muted small mt-2 mb-0" id="timing">Time available: —</p>
+</section>
+<section class="film-panel">
+ <h2 class="h5">2. Find filming ideas</h2>
+ <p class="film-muted">Explore map searches for these categories near your chosen start point. Add actual places below after checking distance, hours and access.</p>
+ <div class="d-flex flex-wrap gap-2 no-print" id="ideas"></div>
+ <div class="mt-3"><label for="stopName" class="form-label">Add a destination you want to film</label>
+ <div class="input-group"><input class="form-control" id="stopName" placeholder="e.g., Historic Downtown Ellijay"><button type="button" class="btn btn-outline-primary" id="addStop">Add stop</button></div></div>
+ <div id="stops" class="mt-3" aria-live="polite"></div>
+</section>
+<section class="film-panel">
+ <h2 class="h5">3. Film plan and checklist</h2>
+ <div class="row g-2 mb-3">
+ <div class="col-md-6"><label for="title" class="form-label">Working video title</label><input id="title" class="form-control" placeholder="A quick afternoon in ..."></div>
+ <div class="col-md-6"><label for="hook" class="form-label">Opening hook</label><input id="hook" class="form-control" placeholder="We only have three hours to explore..."></div>
+ </div>
+ <div id="shots"></div>
+ <label for="notes" class="form-label mt-3">Notes / talking points</label><textarea id="notes" class="form-control" rows="3" placeholder="Interesting history, thumbnail idea, sound bites, permissions"></textarea>
+</section>
+<section class="film-panel">
+ <h2 class="h5">4. Itinerary and route</h2>
+ <p id="itinerary" class="mb-2"></p>
+ <a id="route" href="#" class="btn btn-outline-primary no-print" target="_blank" rel="noopener noreferrer">Open selected route in Google Maps</a>
+ <p class="film-muted small mt-2">The map is handed off to Google Maps for real-time routing; this page does not calculate or confirm driving times. Check the ETA and return deadline before you depart.</p>
+</section>
+</form>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const categories=['Scenic overlooks','Historic downtown','Apple orchards and farm markets','Waterfalls','Museums and historic sites','Local food','State parks','Hidden gems'];
+const defaultShots=['Opening on-camera introduction','Wide establishing shots','Arrival / signage','Walking or driving B-roll','Details, signs and local character','Main attraction / story beats','Ambient sound and transitions','Thumbnail photo','Vertical shots for Shorts','Closing on-camera recap'];
+let stops=[];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const routeUrl=()=>{
+ const a=[$('start').value.trim(),...stops.filter(s=>s.selected).map(s=>s.name),$('start').value.trim()].filter(Boolean);
+ if(a.length<3)return '#';
+ const params=new URLSearchParams({api:'1',origin:a[0],destination:a[a.length-1],travelmode:'driving'});
+ if(a.length>2)params.set('waypoints',a.slice(1,-1).join('|'));
+ return 'https://www.google.com/maps/dir/?'+params.toString();
+};
+const today=()=>{
+ const d=new Date(); const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+ return yyyy+'-'+mm+'-'+dd;
+};
+$('day').value=today();
+function timeMin(v){if(!/^\d{2}:\d{2}$/.test(v))return null; const [h,m]=v.split(':').map(Number);return h*60+m;}
+function display(){
+ const start=timeMin($('leave').value),end=timeMin($('back').value),buffer=Number($('buffer').value)||0;
+ const total=(start===null||end===null)?0:end-start-buffer;
+ $('timing').textContent=total>0?'Usable outing window including travel: '+Math.floor(total/60)+'h '+total%60+'m (return buffer reserved).':'Check your start time, return time and buffer.';
+ $('ideas').innerHTML=categories.map(s=>'<a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?'+new URLSearchParams({api:'1',query:s+' near '+$('start').value}).toString()+'">'+esc(s)+' ↗</a>').join('');
+ $('stops').innerHTML=stops.length?stops.map((s,i)=>'<div class="film-card d-flex flex-wrap align-items-center gap-2"><input type="checkbox" class="form-check-input" data-stop="'+i+'" '+(s.selected?'checked':'')+' aria-label="Include '+esc(s.name)+'"><span class="flex-grow-1">'+(i+1)+'. '+esc(s.name)+'</span><button class="btn btn-sm btn-outline-secondary no-print" data-up="'+i+'" type="button" '+(i===0?'disabled':'')+'>↑</button><button class="btn btn-sm btn-outline-secondary no-print" data-down="'+i+'" type="button" '+(i===stops.length-1?'disabled':'')+'>↓</button><button class="btn btn-sm btn-outline-danger no-print" data-remove="'+i+'" type="button">Remove</button></div>').join(''):'<p class="film-muted">No destinations added yet. Choose a real place to begin.</p>';
+ const selected=stops.filter(s=>s.selected);
+ $('itinerary').textContent=selected.length?$('leave').value+' — Depart '+$('start').value+' → '+selected.map(s=>s.name).join(' → ')+' → Return to '+$('start').value+' by '+$('back').value+'. Allow at least '+buffer+' minutes of contingency; check real navigation times.':'Choose one or more destinations to build your route.';
+ const link=$('route');link.href=routeUrl();link.classList.toggle('disabled',!selected.length||!$('start').value.trim());
+}
+$('window').addEventListener('change',()=>{
+ const windows={lunch:['13:00','16:30'],morning:['09:00','12:00'],afternoon:['13:00','17:00'],all:['09:00','18:00']};
+ const p=windows[$('window').value];if(p){$('leave').value=p[0];$('back').value=p[1];}display();
+});
+function addStop(){
+ const value=$('stopName').value.trim().slice(0,160);
+ if(!value)return; if(stops.length>=8){alert('Limit this outing to eight stops.');return;}
+ stops.push({name:value,selected:true});$('stopName').value='';display();
+}
+$('addStop').addEventListener('click',addStop);
+$('stopName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addStop();}});
+$('stops').addEventListener('click',e=>{
+ const el=e.target;if(el.dataset.remove!==undefined){stops.splice(Number(el.dataset.remove),1);}
+ else if(el.dataset.up!==undefined){const i=Number(el.dataset.up);if(i>0)[stops[i-1],stops[i]]=[stops[i],stops[i-1]];}
+ else if(el.dataset.down!==undefined){const i=Number(el.dataset.down);if(i<stops.length-1)[stops[i+1],stops[i]]=[stops[i],stops[i+1]];}
+ else{return;}display();
+});
+$('stops').addEventListener('change',e=>{if(e.target.dataset.stop!==undefined){stops[Number(e.target.dataset.stop)].selected=e.target.checked;display();}});
+$('shots').innerHTML=defaultShots.map((s,i)=>'<div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="shot'+i+'"><label class="form-check-label" for="shot'+i+'">'+esc(s)+'</label></div>').join('');
+['start','day','leave','back','buffer','walking','conditions'].forEach(id=>$(id).addEventListener('input',display));
+$('savePlan').addEventListener('click',()=>{
+ const fields=['start','day','window','leave','back','buffer','walking','conditions','title','hook','notes'];
+ const data={fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),stops,shots:defaultShots.map((_,i)=>$('shot'+i).checked)};
+ try{localStorage.setItem('vlog_filming_planner_v1',JSON.stringify(data));alert('Saved in this browser on this device.');}
+ catch(e){alert('Browser storage is unavailable. Use Print / Save PDF to keep a copy.');}
+});
+try{
+ const saved=JSON.parse(localStorage.getItem('vlog_filming_planner_v1')||'null');
+ if(saved&&saved.fields){Object.entries(saved.fields).forEach(([id,v])=>{if($(id))$(id).value=v;});stops=Array.isArray(saved.stops)?saved.stops.filter(s=>s&&typeof s.name==='string').slice(0,8):[];if(Array.isArray(saved.shots))saved.shots.forEach((v,i)=>{if($('shot'+i))$('shot'+i).checked=!!v;});}
+}catch(e){}
+display();
+})();
+</script>
+{% endblock %}
