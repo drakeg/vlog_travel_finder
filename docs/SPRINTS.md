@@ -1084,3 +1084,17 @@ Shipped:
 - use short-lived, session-bound, one-time confirmation tokens;
 - invalidate prior previews and support explicit cancellation;
 - revalidate pending data before import and test security boundaries.
+
+
+### Sprint 44 — Durable and concurrency-safe pending checklist imports
+
+Status: In progress
+
+Planning issue: #272
+
+Scope:
+
+- atomically claim pending uploads to prevent concurrent duplicate imports;
+- reject expired uploads and clean up abandoned pending files;
+- allow configurable shared pending-upload storage for multiple application workers;
+- test expiration, cleanup, replay, and concurrent claim behavior.

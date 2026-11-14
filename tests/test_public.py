@@ -5256,3 +5256,41 @@ def test_checklist_import_large_preview_uses_small_token(client, app):
     assert "Imported 1 templates" in imported.get_data(as_text=True)
     with app.app_context():
         assert get_session(app).query(ChecklistTemplateItem).count() == 500
+
+
+def test_pending_checklist_import_expiry_and_cleanup(client, app):
+    import os
+    import time
+    from pathlib import Path
+    client.post("/register", data={"email": "expired-import@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    _, token = _confirm_template_preview(client, {"version": 1, "templates": [{"name": "Expired", "items": []}]})
+    folder = Path(app.instance_path) / "pending-checklist-imports"
+    pending = list(folder.glob("*.json"))
+    assert pending
+    for path in pending:
+        os.utime(path, (time.time() - 1200, time.time() - 1200))
+    denied = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in denied.get_data(as_text=True)
+    assert not list(folder.glob("*.json"))
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
+
+
+def test_pending_checklist_import_claim_is_single_use(client, app):
+    from pathlib import Path
+    from vlog_site.blueprints.public import _pending_import_path
+    import os
+    client.post("/register", data={"email": "claim-import@example.com", "password": "pw123456", "confirm": "pw123456"}, follow_redirects=True)
+    _, token = _confirm_template_preview(client, {"version": 1, "templates": [{"name": "Claimed", "items": []}]})
+    with client.session_transaction() as sess:
+        nonce = sess["checklist_import_nonce"]
+    with app.app_context():
+        original = _pending_import_path(nonce)
+        claimed = original.parent / ("claimed-" + nonce + "-manual.json")
+        os.rename(original, claimed)
+        assert not original.exists()
+    denied = client.post("/checklist-templates/import", data={"confirmation_token": token}, follow_redirects=True)
+    assert "Import confirmation is invalid or expired" in denied.get_data(as_text=True)
+    with app.app_context():
+        assert get_session(app).query(ChecklistTemplate).count() == 0
+    claimed.unlink(missing_ok=True)
