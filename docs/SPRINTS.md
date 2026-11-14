@@ -1088,11 +1088,13 @@ Shipped:
 
 ### Sprint 44 — Durable and concurrency-safe pending checklist imports
 
-Status: In progress
+Status: Complete
 
 Planning issue: #272
 
-Scope:
+Merged implementation PR: #273 (Tests workflow passed)
+
+Shipped:
 
 - atomically claim pending uploads to prevent concurrent duplicate imports;
 - reject expired uploads and clean up abandoned pending files;
