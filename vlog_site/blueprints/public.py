@@ -5,7 +5,7 @@ import json
 import secrets
 import tempfile
 import pathlib
-import time
+import time as clock_time
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -648,7 +648,7 @@ def _pending_import_dir():
 def _cleanup_expired_pending_imports():
     """Remove expired pending uploads, including abandoned and claimed files."""
     folder = _pending_import_dir()
-    cutoff = time.time() - _PENDING_IMPORT_MAX_AGE
+    cutoff = clock_time.time() - _PENDING_IMPORT_MAX_AGE
     for path in folder.iterdir():
         if not path.is_file() or not (
             (len(path.name) == 53 and path.name.endswith(".json"))
@@ -754,7 +754,7 @@ def checklist_templates_import():
         os.rename(path, claimed)
         session.pop("checklist_import_nonce", None)
         try:
-            if time.time() - claimed.stat().st_mtime > _PENDING_IMPORT_MAX_AGE:
+            if clock_time.time() - claimed.stat().st_mtime > _PENDING_IMPORT_MAX_AGE:
                 raise ValueError("Expired pending import")
             with claimed.open("rb") as pending:
                 raw = pending.read(1024 * 1024 + 1)
