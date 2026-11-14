@@ -658,7 +658,7 @@ def _cleanup_expired_pending_imports():
         try:
             if path.stat().st_mtime < cutoff:
                 path.unlink(missing_ok=True)
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError):
             continue
 
 
@@ -675,7 +675,7 @@ def _discard_pending_import():
     if nonce:
         try:
             _pending_import_path(nonce).unlink(missing_ok=True)
-        except ValueError:
+        except (ValueError, OSError):
             pass
 
 
@@ -688,11 +688,14 @@ def _checklist_import_signer():
 def checklist_templates_preview():
     destination = url_for("public.checklist_templates")
     _discard_pending_import()
-    _cleanup_expired_pending_imports()
     try:
+        _cleanup_expired_pending_imports()
         parsed = _parse_checklist_template_upload()
     except ValueError as exc:
         flash(str(exc), "error")
+        return redirect(destination)
+    except OSError:
+        flash("Import storage is temporarily unavailable; please retry", "error")
         return redirect(destination)
     db = get_session(current_app)
     plan = _checklist_import_plan(db, parsed)
@@ -703,11 +706,19 @@ def checklist_templates_preview():
     if len(data) > 1024 * 1024:
         flash("Template import exceeds the 1 MB limit", "error")
         return redirect(destination)
-    path = _pending_import_path(nonce)
-    # A private, exclusively created file avoids large cookies and hidden form fields.
-    with path.open("xb") as pending:
-        os.chmod(path, 0o600)
-        pending.write(data)
+    try:
+        path = _pending_import_path(nonce)
+        with path.open("xb") as pending:
+            os.chmod(path, 0o600)
+            pending.write(data)
+    except OSError:
+        if "path" in locals():
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        flash("Import storage is temporarily unavailable; please retry", "error")
+        return redirect(destination)
     session["checklist_import_nonce"] = nonce
     token = _checklist_import_signer().dumps({
         "user_id": int(session["user_id"]), "nonce": nonce,

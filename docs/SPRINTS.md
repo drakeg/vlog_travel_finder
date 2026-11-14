@@ -1100,3 +1100,17 @@ Shipped:
 - reject expired uploads and clean up abandoned pending files;
 - allow configurable shared pending-upload storage for multiple application workers;
 - test expiration, cleanup, replay, and concurrent claim behavior.
+
+
+### Sprint 45 — Checklist import resilience and operational hardening
+
+Status: In progress
+
+Planning issue: #275
+
+Scope:
+
+- handle pending-import directory and write failures without server errors;
+- clean up partially written files on preview failure;
+- tolerate cleanup permission errors and avoid partial database writes;
+- test injected storage failures and confirm graceful user feedback.
