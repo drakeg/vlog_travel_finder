@@ -1104,7 +1104,9 @@ Shipped:
 
 ### Sprint 45 — Checklist import resilience and operational hardening
 
-Status: In progress
+Status: Complete
+
+Merged PRs: #276 and #277 (Tests workflow passed)
 
 Planning issue: #275
 
@@ -1114,3 +1116,17 @@ Scope:
 - clean up partially written files on preview failure;
 - tolerate cleanup permission errors and avoid partial database writes;
 - test injected storage failures and confirm graceful user feedback.
+
+
+### Sprint 46 — Filming planner schedule feasibility
+
+Status: In progress
+
+Implementation PR: #279
+
+Scope:
+
+- capture filming durations and estimated travel time between stops;
+- estimate return time against a user-provided deadline and contingency buffer;
+- retain timing inputs in browser saves;
+- add route smoke coverage and planning documentation.
