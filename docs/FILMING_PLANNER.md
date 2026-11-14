@@ -56,3 +56,12 @@ No third-party geolocation or AI keys are needed to operate this MVP.
 - Selected catalog places retain their catalog ID in the browser plan to support future saved-trip integration.
 - This is **not** a live POI provider, distance calculation, or opening-hours verification. Cities absent from the existing database will not return suggestions. Use the manual stop field as a fallback.
 - Public access follows the existing places visibility rule; no new account, database, service, or API key is required.
+
+
+## Planned OpenStreetMap integration — Sprint 48 foundation
+
+An internal OpenStreetMap Overpass adapter is being added as a separately testable service. It accepts explicit latitude/longitude and an **operator-configured** endpoint, returns attributable named POIs and category-level filming ideas, skips private/no-access listings and sorts by straight-line distance. It is **not yet connected to the user-facing planner**. Straight-line distance is not driving time.
+
+The adapter does not contact a public service by default. A 15-minute per-process cache and a 15-second per-process query guard are *not* sufficient for deployment-wide quotas in multi-worker installations. Before turning on a shared public endpoint in production, implement shared caching/global rate enforcement and follow the relevant OSM provider usage policy. See https://wiki.openstreetmap.org/wiki/Overpass_API and https://operations.osmfoundation.org/policies/nominatim/.
+
+Keep catalog discovery and manual destinations as fully functional fallbacks. No external provider should receive location data without the user initiating and understanding the request.

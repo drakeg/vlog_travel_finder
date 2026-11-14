@@ -1134,7 +1134,9 @@ Scope:
 
 ### Sprint 47 — Filming destination discovery from existing places
 
-Status: In progress
+Status: Complete
+
+Merged PR: #290 (GitHub Actions Tests passed)
 
 Planning issue: #281
 
@@ -1146,3 +1148,12 @@ Scope:
 - test catalog filtering, invalid queries and existing access restrictions.
 
 Next planned increments: OpenStreetMap place discovery #282, route timing #283, conditions #284, optimization #285, professional PDFs #286, account-saved plans #287, creator tools #288, free hosting #289.
+
+
+### Sprint 48 — OpenStreetMap nearby discovery integration
+
+Status: In progress
+
+Planning issue: #282
+
+First increment: Build a bounded, opt-in Overpass adapter with source attribution, category-level filming rationales, distance sorting, cache/rate guard and offline tests. No public server is hardcoded, and the existing catalog remains the default experience. Follow-up: explicit-consent geocoding and UI integration, with deployment-wide quota controls if a shared public server is used.
