@@ -48,3 +48,11 @@ saved plan is local to the device/browser, not associated with a user account.
 7. Support Cloudflare-friendly deployment and zero-cost/low-cost provider options.
 
 No third-party geolocation or AI keys are needed to operate this MVP.
+
+
+## Catalog discovery — Sprint 47
+- Search existing Vlog Travel Finder places by city directly from the Filming Planner.
+- Review a place's recorded category and a suggested content angle, and add it to the shoot itinerary in one click.
+- Selected catalog places retain their catalog ID in the browser plan to support future saved-trip integration.
+- This is **not** a live POI provider, distance calculation, or opening-hours verification. Cities absent from the existing database will not return suggestions. Use the manual stop field as a fallback.
+- Public access follows the existing places visibility rule; no new account, database, service, or API key is required.

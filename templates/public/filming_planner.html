@@ -44,6 +44,14 @@
  <h2 class="h5">2. Find filming ideas</h2>
  <p class="film-muted">Explore map searches for these categories near your chosen start point. Add actual places below after checking distance, hours and access.</p>
  <div class="d-flex flex-wrap gap-2 no-print" id="ideas"></div>
+ <div class="row g-2 align-items-end mt-3 no-print">
+  <div class="col-md-8"><label class="form-label" for="discoverCity">Find places from the Vlog Travel Finder catalog by city</label>
+   <input class="form-control" id="discoverCity" maxlength="120" placeholder="e.g., Ellijay, GA (leave blank to use starting location)"></div>
+  <div class="col-md-4"><button type="button" class="btn btn-primary w-100" id="discoverStops">Discover destinations</button></div>
+ </div>
+ <div id="discoveryResults" class="mt-3 no-print" aria-live="polite"></div>
+ <p class="film-muted small mt-2 no-print">These are existing catalog places, not live search results. Opening hours, access, weather and driving times have not been verified.</p>
+
  <div class="mt-3"><label for="stopName" class="form-label">Add a destination you want to film</label>
  <div class="input-group"><input class="form-control" id="stopName" placeholder="e.g., Historic Downtown Ellijay"><button type="button" class="btn btn-outline-primary" id="addStop">Add stop</button></div></div>
  <div id="stops" class="mt-3" aria-live="polite"></div>
@@ -73,7 +81,7 @@ const defaultShots=['Opening on-camera introduction','Wide establishing shots','
 let stops=[];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const routeUrl=()=>{
- const a=[$('start').value.trim(),...stops.filter(s=>s.selected).map(s=>s.name),$('start').value.trim()].filter(Boolean);
+ const a=[$('start').value.trim(),...stops.filter(s=>s.selected).map(s=>s.mapQuery||s.name),$('start').value.trim()].filter(Boolean);
  if(a.length<3)return '#';
  const params=new URLSearchParams({api:'1',origin:a[0],destination:a[a.length-1],travelmode:'driving'});
  if(a.length>2)params.set('waypoints',a.slice(1,-1).join('|'));
@@ -119,6 +127,38 @@ function addStop(){
  if(!value)return; if(stops.length>=8){alert('Limit this outing to eight stops.');return;}
  stops.push({name:value,selected:true,minutes:45});$('stopName').value='';display();
 }
+
+async function discoverCatalog(){
+ const location=($('discoverCity').value.trim()||$('start').value.trim());
+ const target=$('discoveryResults');
+ target.textContent='Searching the existing destination catalog…';
+ if(location.length<2){target.textContent='Enter a city (such as Ellijay, GA) to discover catalog places.';return;}
+ try{
+  const response=await fetch('/filming-planner/discover?'+new URLSearchParams({location}));
+  const data=await response.json();
+  if(!response.ok){target.textContent=data.error||'Destination search is unavailable.';return;}
+  target.replaceChildren();
+  if(!data.suggestions.length){target.textContent='No catalog destinations found for '+data.city+'. Try another city or add a stop manually. Live place discovery is planned for a future release.';return;}
+  const heading=document.createElement('p');heading.className='film-muted small';heading.textContent=data.suggestions.length+' catalog destination(s) found in '+data.city+'. Review hours and access independently.';target.appendChild(heading);
+  data.suggestions.forEach(place=>{
+   const card=document.createElement('div');card.className='film-card';
+   const name=document.createElement('strong');name.textContent=place.name;card.appendChild(name);
+   const detail=document.createElement('p');detail.className='film-muted small mb-1';detail.textContent=place.category+' · '+[place.city,place.state].filter(Boolean).join(', ')+' · '+place.source;card.appendChild(detail);
+   const rationale=document.createElement('p');rationale.className='mb-2';rationale.textContent=place.why_film;card.appendChild(rationale);
+   const add=document.createElement('button');add.type='button';add.className='btn btn-sm btn-outline-primary me-2';add.textContent='Add to filming plan';
+   add.addEventListener('click',()=>{
+    if(stops.some(s=>s.placeId===place.id||s.name.trim().toLowerCase()===place.name.trim().toLowerCase())){add.textContent='Already in plan';return;}
+    if(stops.length>=8){add.textContent='Eight-stop limit reached';return;}
+    stops.push({name:place.name,selected:true,minutes:45,placeId:place.id,mapQuery:[place.name,place.city,place.state].filter(Boolean).join(', ')});
+    add.textContent='Added';display();
+   });
+   const link=document.createElement('a');link.href=place.place_url;link.target='_blank';link.rel='noopener noreferrer';link.className='btn btn-sm btn-outline-secondary';link.textContent='View catalog entry';
+   card.appendChild(add);card.appendChild(link);target.appendChild(card);
+  });
+ }catch(error){target.textContent='Destination catalog is unavailable; you can still add places manually.';}
+}
+$('discoverStops').addEventListener('click',discoverCatalog);
+
 $('addStop').addEventListener('click',addStop);
 $('stopName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addStop();}});
 $('stops').addEventListener('click',e=>{
@@ -131,7 +171,7 @@ $('stops').addEventListener('change',e=>{if(e.target.dataset.stop!==undefined){s
 $('shots').innerHTML=defaultShots.map((s,i)=>'<div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="shot'+i+'"><label class="form-check-label" for="shot'+i+'">'+esc(s)+'</label></div>').join('');
 ['start','day','leave','back','buffer','travel','walking','conditions'].forEach(id=>$(id).addEventListener('input',display));
 $('savePlan').addEventListener('click',()=>{
- const fields=['start','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
+ const fields=['start','discoverCity','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
  const data={fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),stops,shots:defaultShots.map((_,i)=>$('shot'+i).checked)};
  try{localStorage.setItem('vlog_filming_planner_v1',JSON.stringify(data));alert('Saved in this browser on this device.');}
  catch(e){alert('Browser storage is unavailable. Use Print / Save PDF to keep a copy.');}
