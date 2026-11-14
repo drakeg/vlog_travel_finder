@@ -56,7 +56,11 @@ def test_filming_catalog_discovery_validates_location(client):
 
 def test_filming_catalog_discovery_respects_place_access_rule(client, db):
     from vlog_site.models import AccessRule
-    db.add(AccessRule(feature="places", anonymous_access=False))
+    rule = db.get(AccessRule, "places")
+    if rule is None:
+        db.add(AccessRule(feature="places", anonymous_access=False))
+    else:
+        rule.anonymous_access = False
     db.commit()
     response = client.get("/filming-planner/discover?location=Testville")
     assert response.status_code == 302
