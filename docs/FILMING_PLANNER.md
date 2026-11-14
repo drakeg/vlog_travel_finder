@@ -60,7 +60,7 @@ No third-party geolocation or AI keys are needed to operate this MVP.
 
 ## Planned OpenStreetMap integration — Sprint 48 foundation
 
-An internal OpenStreetMap Overpass adapter is being added as a separately testable service. It accepts explicit latitude/longitude and an **operator-configured** endpoint, returns attributable named POIs and category-level filming ideas, skips private/no-access listings and sorts by straight-line distance. It is **not yet connected to the user-facing planner**. Straight-line distance is not driving time.
+An internal OpenStreetMap Overpass adapter is being added as a separately testable service. It accepts explicit latitude/longitude and an **operator-configured** endpoint, returns attributable named POIs and category-level filming ideas, skips private/no-access listings and sorts by straight-line distance. It now powers the optional coordinate-based nearby search in the planner when an operator enables and configures a provider. It does not geocode text locations and is disabled by default. Straight-line distance is not driving time.
 
 The adapter does not contact a public service by default. A 15-minute per-process cache and a 15-second per-process query guard are *not* sufficient for deployment-wide quotas in multi-worker installations. Before turning on a shared public endpoint in production, implement shared caching/global rate enforcement and follow the relevant OSM provider usage policy. See https://wiki.openstreetmap.org/wiki/Overpass_API and https://operations.osmfoundation.org/policies/nominatim/.
 
