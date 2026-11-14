@@ -17,6 +17,15 @@ workspace to the existing Vlog Travel Finder Flask application.
 - Printer-friendly sheet with browser **Print / Save PDF**.
 - Optional save/reload in browser localStorage on the same device.
 
+## Scheduling improvement (phase 1.1)
+- Enter an estimated drive time per route leg, including the final return leg.
+- Give each included stop a filming duration (default 45 minutes).
+- See estimated arrival and filming windows and a calculated return time.
+- The planner highlights schedules that do not fit after the return buffer.
+- Duration and travel estimates persist in device-local saved plans.
+
+These estimates are **manual** and do not represent live traffic or route-specific drive times. They should be updated from the mapping provider's ETA before departure.
+
 ## Important limitations
 This phase does **not** automatically verify live availability, driving times,
 opening hours, events, weather, or accessibility. Category buttons open map
