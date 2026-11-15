@@ -125,3 +125,35 @@ def test_live_discovery_controls_render(client):
     assert b'id="discoverNearby"' in response.data
     assert b'id="nearLat"' in response.data
     assert b'id="nearLon"' in response.data
+
+
+def test_filming_resolve_location_requires_login(client):
+    response = client.get("/filming-planner/resolve-location?location=Test%20Place")
+    assert response.status_code == 401
+
+
+def test_filming_resolve_location_matches_existing_place(client, seeded_content):
+    client.post("/register", data={"email": "resolve@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    response = client.get("/filming-planner/resolve-location?location=Test%20Place")
+    assert response.status_code == 200
+    result = response.get_json()["matches"]
+    assert len(result) == 1
+    assert result[0]["name"] == "Test Place"
+    assert result[0]["source"] == "Vlog Travel Finder catalog"
+    assert result[0]["latitude"] is not None
+
+
+def test_filming_resolve_location_does_not_guess_city_centers(client, seeded_content):
+    client.post("/register", data={"email": "resolve-city@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    response = client.get("/filming-planner/resolve-location?location=Testville")
+    assert response.status_code == 200
+    assert response.get_json()["matches"] == []
+
+
+def test_filming_resolve_location_validates_input(client):
+    client.post("/register", data={"email": "resolve-invalid@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    assert client.get("/filming-planner/resolve-location").status_code == 400
+    assert client.get("/filming-planner/resolve-location?location=" + "x" * 121).status_code == 400
