@@ -132,7 +132,10 @@ def test_filming_resolve_location_requires_login(client):
     assert response.status_code == 401
 
 
-def test_filming_resolve_location_matches_existing_place(client, seeded_content):
+def test_filming_resolve_location_matches_existing_place(client, seeded_content, db):
+    seeded_content["place"].latitude = 34.75
+    seeded_content["place"].longitude = -84.46
+    db.commit()
     client.post("/register", data={"email": "resolve@example.com", "password": "pw123456",
                                    "confirm": "pw123456"}, follow_redirects=True)
     response = client.get("/filming-planner/resolve-location?location=Test%20Place")
@@ -157,3 +160,11 @@ def test_filming_resolve_location_validates_input(client):
                                    "confirm": "pw123456"}, follow_redirects=True)
     assert client.get("/filming-planner/resolve-location").status_code == 400
     assert client.get("/filming-planner/resolve-location?location=" + "x" * 121).status_code == 400
+
+
+def test_filming_resolve_location_skips_places_without_coordinates(client, seeded_content):
+    client.post("/register", data={"email": "resolve-no-coords@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    response = client.get("/filming-planner/resolve-location?location=Test%20Place")
+    assert response.status_code == 200
+    assert response.get_json()["matches"] == []
