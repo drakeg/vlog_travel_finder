@@ -74,3 +74,8 @@ The OpenStreetMap search button accepts manually entered latitude and longitude 
 To enable with a provider you operate or are permitted to use, set `FILMING_LIVE_DISCOVERY_ENABLED=true`, `FILMING_OVERPASS_URL=https://your-overpass-provider/.../interpreter`, and an identifying `FILMING_OSM_USER_AGENT`. Docker Compose forwards these optional settings from `.env`. Without configuration, the app responds with a friendly unavailable state; catalog and manual workflows remain usable.
 
 Shared public Overpass servers are *not* unrestricted production infrastructure. The in-process cache and throttle do not implement application-wide limits across multiple workers. Use an operator-managed rate-limiting proxy/shared cache or self-hosted instance for production and follow the upstream service's policy. The next step is convenient opt-in place-name geocoding with appropriate provider licensing, global quotas, and privacy controls. **Neither OSM straight-line distances nor manual travel minutes are actual driving ETAs.**
+
+
+### Exact-name location resolution API (Sprint 48 increment)
+
+`GET /filming-planner/resolve-location?location=<name>` is an authenticated, catalog-only endpoint for resolving an exact saved place name into its stored coordinates. It returns a bounded list of matches with source attribution, never guesses a city center, and does not contact an external geocoding service. This is a backend foundation; a user-facing location picker and policy-compliant free-text geocoding remain outstanding in issue #282. External nearby discovery remains separately opt-in and disabled by default.
