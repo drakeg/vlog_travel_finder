@@ -99,3 +99,38 @@ def discover_nearby():
         "suggestions": places,
         "limitations": "Distances are straight-line estimates; hours, access, weather and actual driving times are unverified.",
     })
+
+
+@filming_bp.get("/filming-planner/resolve-location")
+@require_feature("places")
+def resolve_location():
+    """Resolve exact named catalog places without external geocoding or guessing."""
+    if session.get("user_id") is None or session.get("anonymous_preview"):
+        return jsonify({"error": "Sign in to resolve saved destinations.", "matches": []}), 401
+    query = request.args.get("location", "").strip()
+    if not 2 <= len(query) <= 120:
+        return jsonify({"error": "Enter a saved destination name (2–120 characters).", "matches": []}), 400
+    db = get_session(current_app)
+    records = db.execute(
+        select(Place)
+        .where(func.lower(Place.name) == query.lower())
+        .order_by(Place.id.asc())
+        .limit(8)
+    ).scalars().all()
+    matches = [
+        {
+            "id": place.id,
+            "name": place.name,
+            "city": place.city,
+            "state": place.state,
+            "latitude": place.latitude,
+            "longitude": place.longitude,
+            "source": "Vlog Travel Finder catalog",
+        }
+        for place in records
+        if place.latitude is not None and place.longitude is not None
+    ]
+    return jsonify({
+        "matches": matches,
+        "limitations": "Exact named saved destinations only. Verify the selected place before nearby search.",
+    })
