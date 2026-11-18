@@ -79,3 +79,8 @@ Shared public Overpass servers are *not* unrestricted production infrastructure.
 ### Exact-name location resolution API (Sprint 48 increment)
 
 `GET /filming-planner/resolve-location?location=<name>` is an authenticated, catalog-only endpoint for resolving an exact saved place name into its stored coordinates. It returns a bounded list of matches with source attribution, never guesses a city center, and does not contact an external geocoding service. This is a backend foundation; a user-facing location picker and policy-compliant free-text geocoding remain outstanding in issue #282. External nearby discovery remains separately opt-in and disabled by default.
+
+
+### Saved destination location picker
+
+In the Filming Planner, enter the **exact name** of an existing Vlog Travel Finder destination in “Use coordinates from a saved destination”, click **Find saved place**, and select the correct result. The planner fills the nearby-search latitude and longitude from the stored catalog record. It does **not** automatically call an external provider; clicking **Search nearby on OpenStreetMap** is a separate opt-in step and still requires a configured provider. This is not general address or city geocoding; unknown names and records without coordinates must use manual entry.
