@@ -51,11 +51,11 @@
  </div>
  <div id="discoveryResults" class="mt-3 no-print" aria-live="polite"></div>
  <div class="row g-2 align-items-end mt-3 no-print">
-  <div class="col-md-8"><label class="form-label" for="resolvePlace">Use coordinates from a saved destination</label><input class="form-control" id="resolvePlace" maxlength="120" placeholder="Exact name of a catalog place"></div>
+  <div class="col-md-8"><label class="form-label" for="resolvePlace">Use coordinates from a saved destination</label><input class="form-control" id="resolvePlace" maxlength="120" placeholder="Part of a catalog destination name"></div>
   <div class="col-md-4"><button type="button" class="btn btn-outline-secondary w-100" id="resolvePlaceButton">Find saved place</button></div>
  </div>
  <div id="resolveResults" class="mt-2 no-print" aria-live="polite"></div>
- <p class="film-muted small mt-2 no-print">This lookup uses only the existing destination catalog. Select a matching place to fill the coordinates; external nearby search requires a separate click.</p>
+ <p class="film-muted small mt-2 no-print">Search by part of a saved destination name. This lookup uses only the existing destination catalog. Select a matching place to fill the coordinates; external nearby search requires a separate click.</p>
  <div class="row g-2 align-items-end mt-3 no-print">
   <div class="col-md-4"><label class="form-label" for="nearLat">Nearby search latitude</label><input class="form-control" id="nearLat" type="number" min="-90" max="90" step="any" placeholder="e.g., 34.70"></div>
   <div class="col-md-4"><label class="form-label" for="nearLon">Longitude</label><input class="form-control" id="nearLon" type="number" min="-180" max="180" step="any" placeholder="e.g., -84.48"></div>
@@ -206,7 +206,7 @@ $('discoverNearby').addEventListener('click',discoverOpenStreetMap);
 
 async function resolveSavedPlace(){
  const target=$('resolveResults'),query=$('resolvePlace').value.trim();
- if(query.length<2){target.textContent='Enter the exact name of a saved destination.';return;}
+ if(query.length<2){target.textContent='Enter part of a saved destination name.';return;}
  target.textContent='Searching saved destinations…';
  try{
   const response=await fetch('/filming-planner/resolve-location?'+new URLSearchParams({location:query}));

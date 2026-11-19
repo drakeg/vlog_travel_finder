@@ -104,17 +104,24 @@ def discover_nearby():
 @filming_bp.get("/filming-planner/resolve-location")
 @require_feature("places")
 def resolve_location():
-    """Resolve exact named catalog places without external geocoding or guessing."""
+    """Find named catalog places without external geocoding or guessing."""
     if session.get("user_id") is None or session.get("anonymous_preview"):
         return jsonify({"error": "Sign in to resolve saved destinations.", "matches": []}), 401
     query = request.args.get("location", "").strip()
     if not 2 <= len(query) <= 120:
         return jsonify({"error": "Enter a saved destination name (2–120 characters).", "matches": []}), 400
     db = get_session(current_app)
+    # Escape LIKE wildcards so typed names are treated as literal text.
+    escaped = query.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     records = db.execute(
         select(Place)
-        .where(func.lower(Place.name) == query.lower())
-        .order_by(Place.id.asc())
+        .where(Place.latitude.is_not(None), Place.longitude.is_not(None))
+        .where(func.lower(Place.name).like(f"%{escaped}%", escape="\\"))
+        .order_by(
+            (func.lower(Place.name) == query.lower()).desc(),
+            Place.name.asc(),
+            Place.id.asc(),
+        )
         .limit(8)
     ).scalars().all()
     matches = [
@@ -132,5 +139,5 @@ def resolve_location():
     ]
     return jsonify({
         "matches": matches,
-        "limitations": "Exact named saved destinations only. Verify the selected place before nearby search.",
+        "limitations": "Name matches from the saved catalog only; city/address geocoding is not supported. Verify the selected place.",
     })

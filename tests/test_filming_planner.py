@@ -178,3 +178,26 @@ def test_filming_saved_location_picker_renders(client):
     assert b'id="resolveResults"' in response.data
     assert b'/filming-planner/resolve-location?' in response.data
     assert b'Use coordinates' in response.data
+
+
+def test_filming_resolve_location_supports_partial_names(client, seeded_content, db):
+    seeded_content["place"].latitude = 34.75
+    seeded_content["place"].longitude = -84.46
+    db.commit()
+    client.post("/register", data={"email": "resolve-partial@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    response = client.get("/filming-planner/resolve-location?location=place")
+    assert response.status_code == 200
+    assert [item["name"] for item in response.get_json()["matches"]] == ["Test Place"]
+
+
+def test_filming_resolve_location_escapes_sql_wildcards(client, seeded_content, db):
+    seeded_content["place"].latitude = 34.75
+    seeded_content["place"].longitude = -84.46
+    db.commit()
+    client.post("/register", data={"email": "resolve-wildcard@example.com", "password": "pw123456",
+                                   "confirm": "pw123456"}, follow_redirects=True)
+    for term in ("%25", "_"):
+        response = client.get("/filming-planner/resolve-location?location=" + term + "x")
+        assert response.status_code == 200
+        assert response.get_json()["matches"] == []

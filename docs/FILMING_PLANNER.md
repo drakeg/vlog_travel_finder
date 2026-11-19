@@ -84,3 +84,8 @@ Shared public Overpass servers are *not* unrestricted production infrastructure.
 ### Saved destination location picker
 
 In the Filming Planner, enter the **exact name** of an existing Vlog Travel Finder destination in “Use coordinates from a saved destination”, click **Find saved place**, and select the correct result. The planner fills the nearby-search latitude and longitude from the stored catalog record. It does **not** automatically call an external provider; clicking **Search nearby on OpenStreetMap** is a separate opt-in step and still requires a configured provider. This is not general address or city geocoding; unknown names and records without coordinates must use manual entry.
+
+
+### Partial-name catalog lookup
+
+Saved destination lookup now accepts a **part of a place name**, case-insensitively, with a bounded result list. Exact name matches rank first; SQL wildcard characters in user input are treated literally. The lookup only returns catalog records with coordinates, does not guess city centers or address locations, and never sends the typed name to an external service. The user must still select a matching place and explicitly initiate any nearby provider search.
