@@ -168,3 +168,13 @@ def test_filming_resolve_location_skips_places_without_coordinates(client, seede
     response = client.get("/filming-planner/resolve-location?location=Test%20Place")
     assert response.status_code == 200
     assert response.get_json()["matches"] == []
+
+
+def test_filming_saved_location_picker_renders(client):
+    response = client.get("/filming-planner")
+    assert response.status_code == 200
+    assert b'id="resolvePlace"' in response.data
+    assert b'id="resolvePlaceButton"' in response.data
+    assert b'id="resolveResults"' in response.data
+    assert b'/filming-planner/resolve-location?' in response.data
+    assert b'Use coordinates' in response.data

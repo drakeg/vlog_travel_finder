@@ -51,6 +51,12 @@
  </div>
  <div id="discoveryResults" class="mt-3 no-print" aria-live="polite"></div>
  <div class="row g-2 align-items-end mt-3 no-print">
+  <div class="col-md-8"><label class="form-label" for="resolvePlace">Use coordinates from a saved destination</label><input class="form-control" id="resolvePlace" maxlength="120" placeholder="Exact name of a catalog place"></div>
+  <div class="col-md-4"><button type="button" class="btn btn-outline-secondary w-100" id="resolvePlaceButton">Find saved place</button></div>
+ </div>
+ <div id="resolveResults" class="mt-2 no-print" aria-live="polite"></div>
+ <p class="film-muted small mt-2 no-print">This lookup uses only the existing destination catalog. Select a matching place to fill the coordinates; external nearby search requires a separate click.</p>
+ <div class="row g-2 align-items-end mt-3 no-print">
   <div class="col-md-4"><label class="form-label" for="nearLat">Nearby search latitude</label><input class="form-control" id="nearLat" type="number" min="-90" max="90" step="any" placeholder="e.g., 34.70"></div>
   <div class="col-md-4"><label class="form-label" for="nearLon">Longitude</label><input class="form-control" id="nearLon" type="number" min="-180" max="180" step="any" placeholder="e.g., -84.48"></div>
   <div class="col-md-4"><button type="button" class="btn btn-outline-primary w-100" id="discoverNearby">Search nearby on OpenStreetMap</button></div>
@@ -198,6 +204,32 @@ async function discoverOpenStreetMap(){
 }
 $('discoverNearby').addEventListener('click',discoverOpenStreetMap);
 
+async function resolveSavedPlace(){
+ const target=$('resolveResults'),query=$('resolvePlace').value.trim();
+ if(query.length<2){target.textContent='Enter the exact name of a saved destination.';return;}
+ target.textContent='Searching saved destinations…';
+ try{
+  const response=await fetch('/filming-planner/resolve-location?'+new URLSearchParams({location:query}));
+  const data=await response.json();
+  if(!response.ok){target.textContent=data.error||'Saved destination lookup is unavailable.';return;}
+  target.replaceChildren();
+  if(!data.matches.length){target.textContent='No matching saved destination with coordinates. Enter coordinates manually or search the catalog.';return;}
+  data.matches.forEach(place=>{
+   const row=document.createElement('div');row.className='d-flex flex-wrap gap-2 align-items-center mb-2';
+   const description=document.createElement('span');description.textContent=[place.name,place.city,place.state].filter(Boolean).join(', ')+' — '+place.source;
+   const select=document.createElement('button');select.type='button';select.className='btn btn-sm btn-outline-primary';select.textContent='Use coordinates';
+   select.addEventListener('click',()=>{
+    $('nearLat').value=String(place.latitude);
+    $('nearLon').value=String(place.longitude);
+    target.textContent='Coordinates selected for '+place.name+'. Click “Search nearby on OpenStreetMap” if you want to send this location to the configured external provider.';
+   });
+   row.appendChild(description);row.appendChild(select);target.appendChild(row);
+  });
+ }catch(error){target.textContent='Saved destination lookup is unavailable. Enter coordinates manually.';}
+}
+$('resolvePlaceButton').addEventListener('click',resolveSavedPlace);
+
+
 
 $('addStop').addEventListener('click',addStop);
 $('stopName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addStop();}});
@@ -211,7 +243,7 @@ $('stops').addEventListener('change',e=>{if(e.target.dataset.stop!==undefined){s
 $('shots').innerHTML=defaultShots.map((s,i)=>'<div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="shot'+i+'"><label class="form-check-label" for="shot'+i+'">'+esc(s)+'</label></div>').join('');
 ['start','day','leave','back','buffer','travel','walking','conditions'].forEach(id=>$(id).addEventListener('input',display));
 $('savePlan').addEventListener('click',()=>{
- const fields=['start','discoverCity','nearLat','nearLon','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
+ const fields=['start','discoverCity','resolvePlace','nearLat','nearLon','day','window','leave','back','buffer','travel','walking','conditions','title','hook','notes'];
  const data={fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),stops,shots:defaultShots.map((_,i)=>$('shot'+i).checked)};
  try{localStorage.setItem('vlog_filming_planner_v1',JSON.stringify(data));alert('Saved in this browser on this device.');}
  catch(e){alert('Browser storage is unavailable. Use Print / Save PDF to keep a copy.');}
