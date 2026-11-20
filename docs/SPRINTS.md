@@ -1157,3 +1157,10 @@ Status: In progress
 Planning issue: #282
 
 First increment: Build a bounded, opt-in Overpass adapter with source attribution, category-level filming rationales, distance sorting, cache/rate guard and offline tests. No public server is hardcoded, and the existing catalog remains the default experience. Follow-up: explicit-consent geocoding and UI integration, with deployment-wide quota controls if a shared public server is used.
+
+
+### Sprint 48 — README badges and repository standards maintenance
+
+Status: In progress (documentation maintenance alongside filming discovery #282)
+
+Scope: inspect the verified stack, workflows, license and releases; implement consistent README technology and dynamic CI/activity badges; document maintenance in AGENTS.md and CONTRIBUTING.md; add a no-dependency CI validation check. Do not claim an unverified release, license, security workflow, or deployment. Track this as routine sprint maintenance, independent of the geocoding provider feature PR.
