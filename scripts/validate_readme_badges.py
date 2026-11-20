@@ -22,18 +22,18 @@ def validate():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
     for dependency, label in (("Flask", "Flask"), ("SQLAlchemy", "SQLAlchemy")):
-        version = re.search(rf"(?im)^{re.escape(dependency)}==([^\\s]+)$", requirements)
+        version = re.search(rf"(?im)^{re.escape(dependency)}==([^\s]+)$", requirements)
         assert version, f"{dependency} version missing from requirements"
         assert f"{label}-{version.group(1)}-" in block, f"{dependency} badge version is stale"
-    python = re.search(r"(?m)^FROM python:(\\d+\\.\\d+)-slim", dockerfile)
+    python = re.search(r"(?m)^FROM python:(\d+\.\d+)-slim", dockerfile)
     assert python and f"Python-{python.group(1)}-" in block, "Python image badge is stale"
     assert "sqlite:" in compose.lower(), "SQLite badge unsupported by Compose"
     assert (ROOT / "compose.yaml").exists() and (ROOT / "Dockerfile").exists()
-    workflows = re.findall(r"actions/workflows/([^/\\s)]+)\\/badge\\.svg", block)
+    workflows = re.findall(r"actions/workflows/([^/\s)]+)\/badge\.svg", block)
     assert workflows, "Missing dynamic Actions badge"
     for workflow in workflows:
         assert (ROOT / ".github" / "workflows" / workflow).is_file(), f"Missing workflow {workflow}"
-    assert not re.search(r"(?i)(badge|status)[^\\n]*-(passing|success|green)-", block), "Hardcoded CI success"
+    assert not re.search(r"(?i)(badge|status)[^\n]*-(passing|success|green)-", block), "Hardcoded CI success"
     assert "img.shields.io/github/issues/" + OWNER_REPO in block
     assert "img.shields.io/github/issues-pr/" + OWNER_REPO in block
     assert "img.shields.io/github/license/" not in block, "No license file verified"
