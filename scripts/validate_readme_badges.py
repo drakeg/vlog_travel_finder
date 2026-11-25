@@ -36,7 +36,7 @@ def validate():
     assert not re.search(r"(?i)(badge|status)[^\n]*-(passing|success|green)-", block), "Hardcoded CI success"
     assert "img.shields.io/github/issues/" + OWNER_REPO in block
     assert "img.shields.io/github/issues-pr/" + OWNER_REPO in block
-    assert "img.shields.io/github/license/" not in block, "No license file verified"
+    assert ("img.shields.io/github/license/" + OWNER_REPO in block) == (ROOT / "LICENSE").is_file(), "License badge must reflect tracked license"
     assert "img.shields.io/github/v/release/" not in block, "No release verified"
     print("README badge metadata validated")
 
